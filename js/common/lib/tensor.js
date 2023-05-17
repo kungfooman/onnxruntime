@@ -1,18 +1,21 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {Tensor as TensorInterface, TensorFromImageOptions, TensorToImageDataOptions} from './tensor';
+//import {Tensor as TensorInterface, TensorFromImageOptions, TensorToImageDataOptions} from './tensor';
 
-type TensorType = TensorInterface.Type;
-type TensorDataType = TensorInterface.DataType;
+// type TensorType = TensorInterface.Type;
+// type TensorDataType = TensorInterface.DataType;
 
-type SupportedTypedArrayConstructors = Float32ArrayConstructor|Uint8ArrayConstructor|Int8ArrayConstructor|
-    Uint16ArrayConstructor|Int16ArrayConstructor|Int32ArrayConstructor|BigInt64ArrayConstructor|Uint8ArrayConstructor|
-    Float64ArrayConstructor|Uint32ArrayConstructor|BigUint64ArrayConstructor;
-type SupportedTypedArray = InstanceType<SupportedTypedArrayConstructors>;
+// type SupportedTypedArrayConstructors = Float32ArrayConstructor|Uint8ArrayConstructor|Int8ArrayConstructor|
+//    Uint16ArrayConstructor|Int16ArrayConstructor|Int32ArrayConstructor|BigInt64ArrayConstructor|Uint8ArrayConstructor|
+//    Float64ArrayConstructor|Uint32ArrayConstructor|BigUint64ArrayConstructor;
+// type SupportedTypedArray = InstanceType<SupportedTypedArrayConstructors>;
 
-// a runtime map that maps type string to TypedArray constructor. Should match Tensor.DataTypeMap.
-const NUMERIC_TENSOR_TYPE_TO_TYPEDARRAY_MAP = new Map<string, SupportedTypedArrayConstructors>([
+/**
+ * A runtime map that maps type string to TypedArray constructor. Should match Tensor.DataTypeMap.
+ * @type {Map<string, SupportedTypedArrayConstructors>}
+ */
+const NUMERIC_TENSOR_TYPE_TO_TYPEDARRAY_MAP = new Map([
   ['float32', Float32Array],
   ['uint8', Uint8Array],
   ['int8', Int8Array],
@@ -24,8 +27,11 @@ const NUMERIC_TENSOR_TYPE_TO_TYPEDARRAY_MAP = new Map<string, SupportedTypedArra
   ['uint32', Uint32Array],
 ]);
 
-// a runtime map that maps type string to TypedArray constructor. Should match Tensor.DataTypeMap.
-const NUMERIC_TENSOR_TYPEDARRAY_TO_TYPE_MAP = new Map<SupportedTypedArrayConstructors, TensorType>([
+/**
+ * A runtime map that maps type string to TypedArray constructor. Should match Tensor.DataTypeMap.
+ * @type {Map<SupportedTypedArrayConstructors, TensorType>}
+ */
+const NUMERIC_TENSOR_TYPEDARRAY_TO_TYPE_MAP = new Map([
   [Float32Array, 'float32'],
   [Uint8Array, 'uint8'],
   [Int8Array, 'int8'],
@@ -61,9 +67,10 @@ const checkBigInt = () => {
 /**
  * calculate size from dims.
  *
- * @param dims the dims array. May be an illegal input.
+ * @param {readonly unknown[]} dims the dims array. May be an illegal input.
+ * @returns {number}
  */
-const calculateSize = (dims: readonly unknown[]): number => {
+const calculateSize = (dims) => {
   let size = 1;
   for (let i = 0; i < dims.length; i++) {
     const dim = dims[i];
@@ -78,18 +85,28 @@ const calculateSize = (dims: readonly unknown[]): number => {
   return size;
 };
 
-export class Tensor implements TensorInterface {
+/**
+ * @implements {TensorInterface}
+ */
+export class Tensor {
   // #region constructors
-  constructor(type: TensorType, data: TensorDataType|readonly number[]|readonly boolean[], dims?: readonly number[]);
-  constructor(data: TensorDataType|readonly boolean[], dims?: readonly number[]);
-  constructor(
-      arg0: TensorType|TensorDataType|readonly boolean[], arg1?: TensorDataType|readonly number[]|readonly boolean[],
-      arg2?: readonly number[]) {
+  //constructor(type: TensorType, data: TensorDataType|readonly number[]|readonly boolean[], dims?: readonly number[]);
+  //constructor(data: TensorDataType|readonly boolean[], dims?: readonly number[]);
+  /**
+   *
+   * @param {TensorType|TensorDataType|readonly boolean[]} arg0
+   * @param {TensorDataType|readonly number[]|readonly boolean[]} [arg1]
+   * @param {readonly number[]} [arg2]
+   */
+  constructor(arg0, arg1, arg2) {
     checkBigInt();
 
-    let type: TensorType;
-    let data: TensorDataType;
-    let dims: typeof arg1|typeof arg2;
+    /** @type {TensorType} */
+    let type;
+    /** @type {TensorDataType} */
+    let data;
+    /** @type {typeof arg1|typeof arg2} */
+    let dims;
     // check whether arg0 is type or data
     if (typeof arg0 === 'string') {
       //
@@ -116,7 +133,7 @@ export class Tensor implements TensorInterface {
           // incorrect results.
           // 'typedArrayConstructor' should be one of the typed array prototype objects.
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          data = (typedArrayConstructor as any).from(arg1);
+          data = (typedArrayConstructor /*as any*/).from(arg1);
         } else if (arg1 instanceof typedArrayConstructor) {
           data = arg1;
         } else {
@@ -142,19 +159,19 @@ export class Tensor implements TensorInterface {
           // 'arg0' is of type 'boolean[]'. Uint8Array.from(boolean[]) actually works, but typescript thinks this is
           // wrong type. We use 'as any' to make it happy.
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          data = Uint8Array.from(arg0 as any[]);
+          data = Uint8Array.from(arg0 /*as any[]*/);
         } else {
           throw new TypeError(`Invalid element type of data array: ${firstElementType}.`);
         }
       } else {
         // get tensor type from TypedArray
         const mappedType =
-            NUMERIC_TENSOR_TYPEDARRAY_TO_TYPE_MAP.get(arg0.constructor as SupportedTypedArrayConstructors);
+            NUMERIC_TENSOR_TYPEDARRAY_TO_TYPE_MAP.get(arg0.constructor /*as SupportedTypedArrayConstructors*/);
         if (mappedType === undefined) {
           throw new TypeError(`Unsupported type for tensor data: ${arg0.constructor}.`);
         }
         type = mappedType;
-        data = arg0 as SupportedTypedArray;
+        data = arg0 /*as SupportedTypedArray*/;
       }
     }
 
@@ -172,7 +189,7 @@ export class Tensor implements TensorInterface {
       throw new Error(`Tensor's size(${size}) does not match data length(${data.length}).`);
     }
 
-    this.dims = dims as readonly number[];
+    this.dims = dims /*as readonly number[]*/;
     this.type = type;
     this.data = data;
     this.size = size;
@@ -181,11 +198,13 @@ export class Tensor implements TensorInterface {
   /**
    * Create a new tensor object from image object
    *
-   * @param buffer - Extracted image buffer data - assuming RGBA format
-   * @param imageFormat - input image configuration - required configurations height, width, format
-   * @param tensorFormat - output tensor configuration - Default is RGB format
+   * @param {Uint8ClampedArray|undefined} buffer - Extracted image buffer data - assuming RGBA format
+   * @param {} imageFormat - input image configuration - required configurations height, width, format
+   * @param {TensorFromImageOptions} tensorFormat - output tensor configuration - Default is RGB format
+   * @returns {Tensor}
+   * @private
    */
-  private static bufferToTensor(buffer: Uint8ClampedArray|undefined, options: TensorFromImageOptions): Tensor {
+  static bufferToTensor(buffer, options) {
     if (buffer === undefined) {
       throw new Error('Image buffer must be defined');
     }
@@ -199,19 +218,21 @@ export class Tensor implements TensorInterface {
     const {height, width} = options;
 
     const norm = options.norm ?? {mean: 255, bias: 0};
-    let normMean: [number, number, number, number];
-    let normBias: [number, number, number, number];
+    /** @type {[number, number, number, number]} */
+    let normMean;
+    /** @type {[number, number, number, number]} */
+    let normBias;
 
     if (typeof (norm.mean) === 'number') {
       normMean = [norm.mean, norm.mean, norm.mean, norm.mean];
     } else {
-      normMean = [norm.mean![0], norm.mean![1], norm.mean![2], norm.mean![3] ?? 255];
+      normMean = [norm.mean/*!*/[0], norm.mean/*!*/[1], norm.mean/*!*/[2], norm.mean/*!*/[3] ?? 255];
     }
 
     if (typeof (norm.bias) === 'number') {
       normBias = [norm.bias, norm.bias, norm.bias, norm.bias];
     } else {
-      normBias = [norm.bias![0], norm.bias![1], norm.bias![2], norm.bias![3] ?? 0];
+      normBias = [norm.bias/*!*/[0], norm.bias/*!*/[1], norm.bias/*!*/[2], norm.bias/*!*/[3] ?? 0];
     }
 
     const inputformat = options.bitmapFormat !== undefined ? options.bitmapFormat : 'RGBA';
@@ -266,21 +287,28 @@ export class Tensor implements TensorInterface {
   }
 
   // #region factory
-  static async fromImage(imageData: ImageData, options?: TensorFromImageOptions): Promise<Tensor>;
-  static async fromImage(imageElement: HTMLImageElement, options?: TensorFromImageOptions): Promise<Tensor>;
-  static async fromImage(bitmap: ImageBitmap, options: TensorFromImageOptions): Promise<Tensor>;
-  static async fromImage(urlSource: string, options?: TensorFromImageOptions): Promise<Tensor>;
+  //static async fromImage(imageData: ImageData, options?: TensorFromImageOptions): Promise<Tensor>;
+  //static async fromImage(imageElement: HTMLImageElement, options?: TensorFromImageOptions): Promise<Tensor>;
+  //static async fromImage(bitmap: ImageBitmap, options: TensorFromImageOptions): Promise<Tensor>;
+  //static async fromImage(urlSource: string, options?: TensorFromImageOptions): Promise<Tensor>;
 
-  static async fromImage(image: ImageData|HTMLImageElement|ImageBitmap|string, options?: TensorFromImageOptions):
-      Promise<Tensor> {
+  /**
+   *
+   * @param {ImageData|HTMLImageElement|ImageBitmap|string} image
+   * @param {TensorFromImageOptions} [options]
+   * @returns {Promise<Tensor>}
+   */
+  static async fromImage(image, options) {
     // checking the type of image object
     const isHTMLImageEle = typeof (HTMLImageElement) !== 'undefined' && image instanceof HTMLImageElement;
     const isImageDataEle = typeof (ImageData) !== 'undefined' && image instanceof ImageData;
     const isImageBitmap = typeof (ImageBitmap) !== 'undefined' && image instanceof ImageBitmap;
     const isString = typeof image === 'string';
 
-    let data: Uint8ClampedArray|undefined;
-    let tensorConfig: TensorFromImageOptions = options ?? {};
+    /** @type {Uint8ClampedArray|undefined} */
+    let data;
+    /** @type {TensorFromImageOptions} */
+    let tensorConfig = options ?? {};
 
     // filling and checking image configuration options
     if (isHTMLImageEle) {
@@ -330,8 +358,10 @@ export class Tensor implements TensorInterface {
     } else if (isImageDataEle) {
       // ImageData - image object - format is RGBA by default
       const format = 'RGBA';
-      let height: number;
-      let width: number;
+      /** @type {number} */
+      let height;
+      /** @type {number} */
+      let width;
 
       if (options !== undefined && options.resizedWidth !== undefined && options.resizedHeight !== undefined) {
         height = options.resizedHeight;
@@ -455,7 +485,11 @@ export class Tensor implements TensorInterface {
     }
   }
 
-  toDataURL(options?: TensorToImageDataOptions): string {
+  /**
+   * @param {TensorToImageDataOptions} [options]
+   * @returns {string}
+   */
+  toDataURL(options) {
     const canvas = document.createElement('canvas');
     canvas.width = this.dims[3];
     canvas.height = this.dims[2];
@@ -463,8 +497,10 @@ export class Tensor implements TensorInterface {
 
     if (pixels2DContext != null) {
       // Default values for height and width & format
-      let width: number;
-      let height: number;
+      /** @type {number} */
+      let width;
+      /** @type {number} */
+      let height;
       if (options?.tensorLayout !== undefined && options.tensorLayout === 'NHWC') {
         width = this.dims[2];
         height = this.dims[3];
@@ -476,8 +512,10 @@ export class Tensor implements TensorInterface {
       const inputformat = options?.format !== undefined ? options.format : 'RGB';
 
       const norm = options?.norm;
-      let normMean: [number, number, number, number];
-      let normBias: [number, number, number, number];
+      /** @type {[number, number, number, number]} */
+      let normMean;
+      /** @type {[number, number, number, number]} */
+      let normBias;
       if (norm === undefined || norm.mean === undefined) {
         normMean = [255, 255, 255, 255];
       } else {
@@ -525,12 +563,12 @@ export class Tensor implements TensorInterface {
 
       for (let i = 0; i < height; i++) {
         for (let j = 0; j < width; j++) {
-          const R = ((this.data[rTensorPointer++] as number) - normBias[0]) * normMean[0];  // R value
-          const G = ((this.data[gTensorPointer++] as number) - normBias[1]) * normMean[1];  // G value
-          const B = ((this.data[bTensorPointer++] as number) - normBias[2]) * normMean[2];  // B value
+          const R = ((this.data[rTensorPointer++] /*as number*/) - normBias[0]) * normMean[0];  // R value
+          const G = ((this.data[gTensorPointer++] /*as number*/) - normBias[1]) * normMean[1];  // G value
+          const B = ((this.data[bTensorPointer++] /*as number*/) - normBias[2]) * normMean[2];  // B value
           const A = aTensorPointer === -1 ?
               255 :
-              ((this.data[aTensorPointer++] as number) - normBias[3]) * normMean[3];  // A value
+              ((this.data[aTensorPointer++] /*as number*/) - normBias[3]) * normMean[3];  // A value
           // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
           pixels2DContext.fillStyle = 'rgba(' + R + ',' + G + ',' + B + ',' + A + ')';
           pixels2DContext.fillRect(j, i, 1, 1);
@@ -542,14 +580,23 @@ export class Tensor implements TensorInterface {
     }
   }
 
-  toImageData(options?: TensorToImageDataOptions): ImageData {
+  /**
+   *
+   * @param {TensorToImageDataOptions} [options]
+   * @returns {ImageData}
+   */
+  toImageData(options) {
     const pixels2DContext = document.createElement('canvas').getContext('2d');
-    let image: ImageData;
+    /** @type {ImageData} */
+    let image;
     if (pixels2DContext != null) {
       // Default values for height and width & format
-      let width: number;
-      let height: number;
-      let channels: number;
+      /** @type {number} */
+      let width;
+      /** @type {number} */
+      let height;
+      /** @type {number} */
+      let channels;
       if (options?.tensorLayout !== undefined && options.tensorLayout === 'NHWC') {
         width = this.dims[2];
         height = this.dims[1];
@@ -562,8 +609,10 @@ export class Tensor implements TensorInterface {
       const inputformat = options !== undefined ? (options.format !== undefined ? options.format : 'RGB') : 'RGB';
 
       const norm = options?.norm;
-      let normMean: [number, number, number, number];
-      let normBias: [number, number, number, number];
+      /** @type {[number, number, number, number]} */
+      let normMean;
+      /** @type {[number, number, number, number]} */
+      let normBias;
       if (norm === undefined || norm.mean === undefined) {
         normMean = [255, 255, 255, 255];
       } else {
@@ -628,12 +677,12 @@ export class Tensor implements TensorInterface {
 
       for (let i = 0; i < height * width;
            rImagePointer += step, gImagePointer += step, bImagePointer += step, aImagePointer += step, i++) {
-        image.data[rImagePointer] = ((this.data[rTensorPointer++] as number) - normBias[0]) * normMean[0];  // R value
-        image.data[gImagePointer] = ((this.data[gTensorPointer++] as number) - normBias[1]) * normMean[1];  // G value
-        image.data[bImagePointer] = ((this.data[bTensorPointer++] as number) - normBias[2]) * normMean[2];  // B value
+        image.data[rImagePointer] = ((this.data[rTensorPointer++] /*as number*/) - normBias[0]) * normMean[0];  // R value
+        image.data[gImagePointer] = ((this.data[gTensorPointer++] /*as number*/) - normBias[1]) * normMean[1];  // G value
+        image.data[bImagePointer] = ((this.data[bTensorPointer++] /*as number*/) - normBias[2]) * normMean[2];  // B value
         image.data[aImagePointer] = aTensorPointer === -1 ?
             255 :
-            ((this.data[aTensorPointer++] as number) - normBias[3]) * normMean[3];  // A value
+            ((this.data[aTensorPointer++] /*as number*/) - normBias[3]) * normMean[3];  // A value
       }
 
     } else {
@@ -643,14 +692,35 @@ export class Tensor implements TensorInterface {
   }
 
   // #region fields
-  readonly dims: readonly number[];
-  readonly type: TensorType;
-  readonly data: TensorDataType;
-  readonly size: number;
+  /**
+   * @type {readonly number[]}
+   * @readonly
+   */
+  dims;
+  /**
+   * @type {TensorType}
+   * @readonly
+   */
+  type;
+  /**
+   * @type {TensorDataType}
+   * @readonly
+   */
+  data;
+  /**
+   * @type {number}
+   * @readonly
+   */
+  size;
   // #endregion
 
   // #region tensor utilities
-  reshape(dims: readonly number[]): Tensor {
+
+  /**
+   * @param {readonly number[]} dims
+   * @returns {Tensor}
+   */
+  reshape(dims) {
     return new Tensor(this.type, this.data, dims);
   }
   // #endregion

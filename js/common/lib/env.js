@@ -1,18 +1,26 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {Env} from './env';
+//import {Env} from './env';
 
-type LogLevelType = Env['logLevel'];
+//type LogLevelType = Env['logLevel'];
 
-let logLevelValue: Required<LogLevelType> = 'warning';
+/** @type {Required<LogLevelType>} */
+let logLevelValue = 'warning';
 
-export const env: Env = {
-  wasm: {} as Env.WebAssemblyFlags,
-  webgl: {} as Env.WebGLFlags,
-  webgpu: {} as Env.WebGpuFlags,
+/** @type {Env} */
+export const env = {
+  /** @type {Env.WebAssemblyFlags} */
+  wasm: {},
+  /** @type {Env.WebGLFlags} */
+  webgl: {},
+  /** @type {Env.WebGpuFlags} */
+  webgpu: {},
 
-  set logLevel(value: LogLevelType) {
+  /**
+   * @type {LogLevelType}
+   */
+  set logLevel(value) {
     if (value === undefined) {
       return;
     }
@@ -21,7 +29,11 @@ export const env: Env = {
     }
     logLevelValue = value;
   },
-  get logLevel(): Required<LogLevelType> {
+
+  /**
+   * @type {Required<LogLevelType>}
+   */
+  get logLevel() {
     return logLevelValue;
   },
 };

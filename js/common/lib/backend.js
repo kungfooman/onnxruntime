@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {Backend} from './backend';
+//import {Backend} from './backend';
 
+/*
 interface BackendInfo {
   backend: Backend;
   priority: number;
@@ -11,21 +12,24 @@ interface BackendInfo {
   initialized?: boolean;
   aborted?: boolean;
 }
+*/
 
-const backends: {[name: string]: BackendInfo} = {};
-const backendsSortedByPriority: string[] = [];
+/** @type {{[name: string]: BackendInfo}} */
+const backends = {};
+/** @type {string[]} */
+const backendsSortedByPriority = [];
 
 /**
  * Register a backend.
  *
- * @param name - the name as a key to lookup as an execution provider.
- * @param backend - the backend object.
- * @param priority - an integer indicating the priority of the backend. Higher number means higher priority. if priority
+ * @param {string} name - the name as a key to lookup as an execution provider.
+ * @param {Backend} backend - the backend object.
+ * @param {number} priority - an integer indicating the priority of the backend. Higher number means higher priority. if priority
  * < 0, it will be considered as a 'beta' version and will not be used as a fallback backend by default.
- *
+ * @returns {void}
  * @internal
  */
-export const registerBackend = (name: string, backend: Backend, priority: number): void => {
+export const registerBackend = (name, backend, priority) => {
   if (backend && typeof backend.init === 'function' && typeof backend.createSessionHandler === 'function') {
     const currentBackend = backends[name];
     if (currentBackend === undefined) {
@@ -62,12 +66,12 @@ export const registerBackend = (name: string, backend: Backend, priority: number
 /**
  * Resolve backend by specified hints.
  *
- * @param backendHints - a list of execution provider names to lookup. If omitted use registered backends as list.
- * @returns a promise that resolves to the backend.
+ * @param {readonly string[]} backendHints - a list of execution provider names to lookup. If omitted use registered backends as list.
+ * @returns {Promise<Backend>} a promise that resolves to the backend.
  *
  * @internal
  */
-export const resolveBackend = async(backendHints: readonly string[]): Promise<Backend> => {
+export const resolveBackend = async(backendHints) => {
   const backendNames = backendHints.length === 0 ? backendsSortedByPriority : backendHints;
   const errors = [];
   for (const backendName of backendNames) {

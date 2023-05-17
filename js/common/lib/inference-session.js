@@ -1,27 +1,44 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {SessionHandler} from './backend';
-import {resolveBackend} from './backend-impl';
-import {InferenceSession as InferenceSessionInterface} from './inference-session';
-import {OnnxValue} from './onnx-value';
-import {Tensor} from './tensor';
+//import {SessionHandler} from './backend';
+import {resolveBackend} from './backend.js';
+//import {InferenceSession as InferenceSessionInterface} from './inference-session.js';
+//import {OnnxValue} from './onnx-value';
+import {Tensor} from './tensor.js';
 
-type SessionOptions = InferenceSessionInterface.SessionOptions;
-type RunOptions = InferenceSessionInterface.RunOptions;
-type FeedsType = InferenceSessionInterface.FeedsType;
-type FetchesType = InferenceSessionInterface.FetchesType;
-type ReturnType = InferenceSessionInterface.ReturnType;
+//type SessionOptions = InferenceSessionInterface.SessionOptions;
+//type RunOptions = InferenceSessionInterface.RunOptions;
+//type FeedsType = InferenceSessionInterface.FeedsType;
+//type FetchesType = InferenceSessionInterface.FetchesType;
+//type ReturnType = InferenceSessionInterface.ReturnType;
 
-export class InferenceSession implements InferenceSessionInterface {
-  private constructor(handler: SessionHandler) {
+/**
+ * @implements {InferenceSessionInterface}
+ */
+
+export class InferenceSession {
+  /**
+   * @param {SessionHandler} handler
+   * @private
+   */
+  constructor(handler) {
     this.handler = handler;
   }
-  run(feeds: FeedsType, options?: RunOptions): Promise<ReturnType>;
-  run(feeds: FeedsType, fetches: FetchesType, options?: RunOptions): Promise<ReturnType>;
-  async run(feeds: FeedsType, arg1?: FetchesType|RunOptions, arg2?: RunOptions): Promise<ReturnType> {
-    const fetches: {[name: string]: OnnxValue|null} = {};
-    let options: RunOptions = {};
+  //run(feeds: FeedsType, options?: RunOptions): Promise<ReturnType>;
+  //run(feeds: FeedsType, fetches: FetchesType, options?: RunOptions): Promise<ReturnType>;
+  /**
+   *
+   * @param {FeedsType} feeds
+   * @param {FetchesType|RunOptions} [arg1]
+   * @param {RunOptions} [arg2]
+   * @returns {Promise<ReturnType>}
+   */
+  async run(feeds, arg1, arg2) {
+    /** @type {{[name: string]: OnnxValue|null}} */
+    const fetches = {};
+    /** @type {RunOptions} */
+    let options = {};
     // check inputs
     if (typeof feeds !== 'object' || feeds === null || feeds instanceof Tensor || Array.isArray(feeds)) {
       throw new TypeError(
@@ -66,7 +83,7 @@ export class InferenceSession implements InferenceSessionInterface {
         const arg1Keys = Object.getOwnPropertyNames(arg1);
         for (const name of this.outputNames) {
           if (arg1Keys.indexOf(name) !== -1) {
-            const v = (arg1 as InferenceSessionInterface.NullableOnnxValueMapType)[name];
+            const v = (arg1 /*as InferenceSessionInterface.NullableOnnxValueMapType*/)[name];
             if (v === null || v instanceof Tensor) {
               isFetches = true;
               isFetchesEmpty = false;
@@ -82,7 +99,7 @@ export class InferenceSession implements InferenceSessionInterface {
             throw new TypeError('\'options\' must be an object.');
           }
         } else {
-          options = arg1 as RunOptions;
+          options = arg1 /*as RunOptions*/;
         }
       }
     } else if (typeof arg1 !== 'undefined') {
@@ -106,7 +123,8 @@ export class InferenceSession implements InferenceSessionInterface {
     // feeds, fetches and options are prepared
 
     const results = await this.handler.run(feeds, fetches, options);
-    const returnValue: {[name: string]: OnnxValue} = {};
+    /** @type {{[name: string]: OnnxValue}} */
+    const returnValue = {};
     for (const key in results) {
       if (Object.hasOwnProperty.call(results, key)) {
         returnValue[key] = new Tensor(results[key].type, results[key].data, results[key].dims);
@@ -115,17 +133,25 @@ export class InferenceSession implements InferenceSessionInterface {
     return returnValue;
   }
 
-  static create(path: string, options?: SessionOptions): Promise<InferenceSessionInterface>;
-  static create(buffer: ArrayBufferLike, options?: SessionOptions): Promise<InferenceSessionInterface>;
-  static create(buffer: ArrayBufferLike, byteOffset: number, byteLength?: number, options?: SessionOptions):
-      Promise<InferenceSessionInterface>;
-  static create(buffer: Uint8Array, options?: SessionOptions): Promise<InferenceSessionInterface>;
-  static async create(
-      arg0: string|ArrayBufferLike|Uint8Array, arg1?: SessionOptions|number, arg2?: number,
-      arg3?: SessionOptions): Promise<InferenceSessionInterface> {
+  //static create(path: string, options?: SessionOptions): Promise<InferenceSessionInterface>;
+  //static create(buffer: ArrayBufferLike, options?: SessionOptions): Promise<InferenceSessionInterface>;
+  //static create(buffer: ArrayBufferLike, byteOffset: number, byteLength?: number, options?: SessionOptions):
+  //    Promise<InferenceSessionInterface>;
+  //static create(buffer: Uint8Array, options?: SessionOptions): Promise<InferenceSessionInterface>;
+  /**
+   *
+   * @param {string|ArrayBufferLike|Uint8Array} arg0
+   * @param {SessionOptions|number} [arg1]
+   * @param {number} [arg2]
+   * @param {SessionOptions} [arg3]
+   * @returns {Promise<InferenceSessionInterface>}
+   */
+  static async create(arg0, arg1, arg2, arg3) {
     // either load from a file or buffer
-    let filePathOrUint8Array: string|Uint8Array;
-    let options: SessionOptions = {};
+    /** @type {string|Uint8Array} */
+    let filePathOrUint8Array;
+    /** @type {SessionOptions} */
+    let options = {};
 
     if (typeof arg0 === 'string') {
       filePathOrUint8Array = arg0;
@@ -190,19 +216,30 @@ export class InferenceSession implements InferenceSessionInterface {
     return new InferenceSession(handler);
   }
 
-  startProfiling(): void {
+  startProfiling() {
     this.handler.startProfiling();
   }
-  endProfiling(): void {
+  endProfiling() {
     this.handler.endProfiling();
   }
 
-  get inputNames(): readonly string[] {
+  /**
+   * @type {readonly string[]}
+   */
+  get inputNames() {
     return this.handler.inputNames;
   }
-  get outputNames(): readonly string[] {
+
+  /**
+   * @type {readonly string[]}
+   */
+  get outputNames() {
     return this.handler.outputNames;
   }
 
-  private handler: SessionHandler;
+  /**
+   * @type {SessionHandler}
+   * @private
+   */
+  handler;
 }
