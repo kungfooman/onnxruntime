@@ -6,11 +6,11 @@
 export class MatMulUtil {
   /**
    * Calculate the expected shape when matrix multiplication
-   * @param a The shape of tensor A. Should be a tuple of 2 positive integers
-   * @param b The shape of tensor B. Should be a tuple of 2 positive integers
-   * @returns The expected shape of the result, or undefined if N/A
+   * @param {[number, number]} a The shape of tensor A. Should be a tuple of 2 positive integers
+   * @param {[number, number]} b The shape of tensor B. Should be a tuple of 2 positive integers
+   * @returns {[number, number]|undefined} The expected shape of the result, or undefined if N/A
    */
-  static calcMatMulShape(a: [number, number], b: [number, number]): [number, number]|undefined {
+  static calcMatMulShape(a, b) {
     return (a[1] !== b[0]) ? undefined : [a[0], b[1]];
   }
 }
@@ -19,12 +19,12 @@ export class MatMulUtil {
 export class BroadcastUtil {
   /**
    * Calculate the expected shape when broadcasting 2 tensors
-   * @param a The shape of tensor A. Should be an array of positive integers
-   * @param b The shape of tensor B. Should be an array of positive integers
-   * @param isMatMul Whether the operation is MatMul
-   * @returns The expected shape of the result, or undefined if N/A
+   * @param {readonly number[]} adims The shape of tensor A. Should be an array of positive integers
+   * @param {readonly number[]} bdims The shape of tensor B. Should be an array of positive integers
+   * @param {boolean} isMatMul Whether the operation is MatMul
+   * @returns {readonly number[]|undefined} The expected shape of the result, or undefined if N/A
    */
-  static calcShape(adims: readonly number[], bdims: readonly number[], isMatMul = false): readonly number[]|undefined {
+  static calcShape(adims, bdims, isMatMul = false) {
     const arank = adims.length;
     const brank = bdims.length;
     if (arank === 0) {
@@ -64,10 +64,11 @@ export class BroadcastUtil {
 
   /**
    * Determine if a shape is unidirectional broadcastable to another shape
-   * @param shape The input shape
-   * @param finalShape The desired shape after broadcasting
+   * @param {readonly number[]} shape The input shape
+   * @param {readonly number[]} finalShape The desired shape after broadcasting
+   * @returns {boolean}
    */
-  static isValidBroadcast(shape: readonly number[], finalShape: readonly number[]): boolean {
+  static isValidBroadcast(shape, finalShape) {
     // align shape to the right
     const inputRank = shape.length;
     const finalRank = finalShape.length;
@@ -87,25 +88,34 @@ export class BroadcastUtil {
 export class ShapeUtil {
   /**
    * calculate the size (number of elements)
+   * @param {readonly number[]} dims
+   * @returns {number}
    */
-  static size(dims: readonly number[]): number {
+  static size(dims) {
     return ShapeUtil.getSizeFromDimensionRange(dims, 0, dims.length);
   }
 
   /**
    * calculate the size (number of elements) from the given axis (inclusive)
+   * @param {readonly number[]} dims
+   * @param {number} axis
+   * @throws {TypeError}
+   * @returns {number}
    */
-  static sizeFromDimension(dims: readonly number[], axis: number): number {
+  static sizeFromDimension(dims, axis) {
     if (axis < 0 || axis > dims.length) {
-      throw new Error(`invalid dimension of ${axis} for sizeFromDimension as Tensor has ${dims.length} dimensions.`);
+      throw new TypeError(`invalid dimension of ${axis} for sizeFromDimension as Tensor has ${dims.length} dimensions.`);
     }
     return ShapeUtil.getSizeFromDimensionRange(dims, axis, dims.length);
   }
 
   /**
    * calculate the size (number of elements) to the given axis (exclusive)
+   * @param {readonly number[]} dims
+   * @param {number} axis
+   * @returns {number}
    */
-  static sizeToDimension(dims: readonly number[], axis: number): number {
+  static sizeToDimension(dims, axis) {
     if (axis < 0 || axis > dims.length) {
       throw new Error(`invalid dimension of ${axis} for sizeToDimension as Tensor has ${dims.length} dimensions.`);
     }
@@ -114,8 +124,12 @@ export class ShapeUtil {
 
   /**
    * calculate the size (number of elements) from and to the given axis [start, end)
+   * @param {readonly number[]} dims
+   * @param {number} start
+   * @param {number} end
+   * @returns {number}
    */
-  static getSizeFromDimensionRange(dims: readonly number[], start: number, end: number): number {
+  static getSizeFromDimensionRange(dims, start, end) {
     let size = 1;
     for (let i = start; i < end; i++) {
       // safety check as this method is called by multiple other methods requiring size.
@@ -130,7 +144,11 @@ export class ShapeUtil {
     return size;
   }
 
-  static computeStrides(dims: readonly number[]): readonly number[] {
+  /**
+   * @param {readonly number[]} dims
+   * @returns {readonly number[]}
+   */
+  static computeStrides(dims) {
     const rank = dims.length;
     if (rank === 0) {
       return [];
@@ -147,26 +165,35 @@ export class ShapeUtil {
   }
 
   /**
-   * normailze axis of range [-r, r) into [0, r).
+   * normalize axis of range [-r, r) into [0, r).
+   * @param {number} axis
+   * @param {number} tensorRank
+   * @returns {number}
    */
-  static normalizeAxis(axis: number, tensorRank: number): number {
+  static normalizeAxis(axis, tensorRank) {
     if (axis < -tensorRank && axis >= tensorRank) {
       throw new Error('unsupported axis for this operation.');
     }
     return axis < 0 ? axis + tensorRank : axis;
   }
 
-  static normalizeAxes(axes: readonly number[], tensorRank?: number): number[] {
+  /**
+   * @param {readonly number[]} axes
+   * @param {number} [tensorRank]
+   * @returns {number[]}
+   */
+  static normalizeAxes(axes, tensorRank) {
     return axes.map(x => this.normalizeAxis(x, tensorRank ?? axes.length));
   }
 
   /**
    * Sorts a given array based on the indices in the Perm array
    * Used in Transpose
-   * @param a Array to be sorted such as dims or strides
-   * @param perm Perm given; if null a will be reversed
+   * @param {readonly number[]} a Array to be sorted such as dims or strides
+   * @param {readonly number[]} [perm] Perm given; if null a will be reversed
+   * @returns {readonly number[]}
    */
-  static sortBasedOnPerm(a: readonly number[], perm?: readonly number[]): readonly number[] {
+  static sortBasedOnPerm(a, perm) {
     if (perm) {
       return perm.map((v) => a[v]);
     } else {
@@ -176,20 +203,22 @@ export class ShapeUtil {
 
   /**
    * Pads a given shape according to the padding values
-   * @param dims shape of the Tensor to be padded
-   * @param pad pad values
+   * @param {readonly number[]} dims shape of the Tensor to be padded
+   * @param {readonly number[]} pad pad values
+   * @returns {readonly number[]}
    */
-  static padShape(dims: readonly number[], pad: readonly number[]): readonly number[] {
+  static padShape(dims, pad) {
     const rank = dims.length;
     return dims.map((v, i) => v + pad[i] + pad[i + rank]);
   }
 
   /**
    * Determines if the two shapes are identical
-   * @param shape1
-   * @param shape2
+   * @param {readonly number[]} shape1
+   * @param {readonly number[]} shape2
+   * @returns {boolean}
    */
-  static areEqual(shape1: readonly number[], shape2: readonly number[]): boolean {
+  static areEqual(shape1, shape2) {
     if (shape1.length !== shape2.length) {
       return false;
     }
@@ -200,16 +229,15 @@ export class ShapeUtil {
 export class PoolConvUtil {
   /**
    * Adjust the kernel, strides, pads to correct rank. Set to default value if not present
-   * @param isGlobalOperator If true, perform global pooling.
-   * @param inputDims The input tensor dimension.
-   * @param kernelShape The size of the kernel along each axis.
-   * @param strides Stride along each axis.
-   * @param dilations Dilation along each axis.
-   * @param pads Padding for the beginning and ending along each axis.
+   * @param {boolean} isGlobalOperator If true, perform global pooling.
+   * @param {readonly number[]} inputDims The input tensor dimension.
+   * @param {number[]} kernelShape The size of the kernel along each axis.
+   * @param {number[]} strides Stride along each axis.
+   * @param {number[]} dilations Dilation along each axis.
+   * @param {number[]} pads Padding for the beginning and ending along each axis.
+   * @returns {void}
    */
-  static adjustPoolAttributes(
-      isGlobalOperator: boolean, inputDims: readonly number[], kernelShape: number[], strides: number[],
-      dilations: number[], pads: number[]): void {
+  static adjustPoolAttributes(isGlobalOperator, inputDims, kernelShape, strides, dilations, pads) {
     if (!isGlobalOperator && kernelShape.length !== inputDims.length - 2) {
       throw new Error('length of specified kernel shapes should be 2 less than length of input dimensions');
     }
@@ -270,10 +298,20 @@ export class PoolConvUtil {
     }
   }
 
-  // adjust pad values based on 'autoPad' attribute
-  static adjustPadsBasedOnAutoPad(
-      inputDims: readonly number[], strides: readonly number[], dilations: readonly number[],
-      kernelShape: readonly number[], pads: number[], isChannelLast: boolean, autoPad?: string): void {
+  /**
+   * Adjust pad values based on 'autoPad' attribute.
+   *
+   * @param {readonly number[]} inputDims
+   * @param {readonly number[]} strides
+   * @param {readonly number[]} dilations
+   * @param {readonly number[]} kernelShape
+   * @param {number[]} pads
+   * @param {boolean} isChannelLast
+   * @param {string} [autoPad]
+   * @throws {Error}
+   * @returns {void}
+   */
+  static adjustPadsBasedOnAutoPad(inputDims, strides, dilations, kernelShape, pads, isChannelLast, autoPad) {
     if (!autoPad) {
       return;
     }
@@ -299,60 +337,71 @@ export class PoolConvUtil {
 
   /**
    * Calculate the output shape for Pool ops based on input attributes. (Should be used only for Pool ops)
-   * @param isGlobalOperator If true, perform global pooling.
-   * @param inputDims The input tensor dimension. (inputs[0].dims)
-   * @param strides Stride along each axis.
-   * @param dilations Dilation along each axis.
-   * @param kernelShape The size of the kernel along each axis.
-   * @param pads Padding for the beginning and ending along each axis.
-   * @param autoPad DEPRECATED attribute supported for legacy models. Specifies how to implicitly calculate pads in each
-   *     dimension. Can take values NOTSET, SAME_UPPER, SAME_LOWER, or VALID.
+   * @param {boolean} isGlobalOperator If true, perform global pooling.
+   * @param {readonly number[]} inputDims The input tensor dimension. (inputs[0].dims)
+   * @param {number[]} strides Stride along each axis.
+   * @param {number[]} dilations Dilation along each axis.
+   * @param {number[]} kernelShape The size of the kernel along each axis.
+   * @param {number[]} pads Padding for the beginning and ending along each axis.
+   * @param {string} [autoPad] DEPRECATED attribute supported for legacy models. Specifies
+   * how to implicitly calculate pads in each dimension. Can take values NOTSET, SAME_UPPER,
+   * SAME_LOWER, or VALID.
+   * @throws {Error}
+   * @returns {number[]}
    */
-  static computePoolOutputShape(
-      isGlobalOperator: boolean, inputDims: readonly number[], strides: number[], dilations: number[],
-      kernelShape: number[], pads: number[], autoPad?: string): number[] {
+  static computePoolOutputShape(isGlobalOperator, inputDims, strides, dilations, kernelShape, pads, autoPad) {
     if (inputDims.length <= 0) {
       throw new Error('input shape must be of size greater than 0');
     }
-
     // Add batch size and number of channels of output
     const outputDims = [inputDims[0], inputDims[1]];
-
     PoolConvUtil.computeShapeHelper(
-        isGlobalOperator, inputDims, outputDims, strides, dilations, kernelShape, pads, autoPad);
+      isGlobalOperator, inputDims, outputDims, strides, dilations, kernelShape, pads, autoPad
+    );
     return outputDims;
   }
 
   /**
    * Calculate the output shape for Conv op based on input attributes. (Should be used only for Conv op)
-   * @param inputDims The input tensor dimension. (inputs[0].dims)
-   * @param filterDims The filter tensor dimension. (inputs[1].dims)
-   * @param strides Stride along each axis.
-   * @param kernelShape The size of the kernel along each axis.
-   * @param pads Padding for the beginning and ending along each axis.
-   * @param autoPad DEPRECATED attribute supported for legacy models. Specifies how to implicitly calculate pads in each
-   *     dimension. Can take values NOTSET, SAME_UPPER, SAME_LOWER, or VALID.
+   * @param {readonly number[]} inputDims The input tensor dimension. (inputs[0].dims)
+   * @param {readonly number[]} filterDims The filter tensor dimension. (inputs[1].dims)
+   * @param {number[]} strides Stride along each axis.
+   * @param {number[]} dilations
+   * @param {number[]} kernelShape The size of the kernel along each axis.
+   * @param {number[]} pads Padding for the beginning and ending along each axis.
+   * @param {string} [autoPad] DEPRECATED attribute supported for legacy models. Specifies how
+   * to implicitly calculate pads in each dimension. Can take values NOTSET, SAME_UPPER,
+   * SAME_LOWER, or VALID.
+   * @returns {number[]}
    */
-  static computeConvOutputShape(
-      inputDims: readonly number[], filterDims: readonly number[], strides: number[], dilations: number[],
-      kernelShape: number[], pads: number[], autoPad?: string): number[] {
+  static computeConvOutputShape(inputDims, filterDims, strides, dilations, kernelShape, pads, autoPad) {
     if (inputDims.length <= 0 || filterDims.length <= 0) {
       throw new Error('invalid input tensor dims or invalid filter tensor dims');
     }
-
     // Add batch size and number of channels of output
     const outputDims = [inputDims[0], filterDims[0]];
-
     PoolConvUtil.computeShapeHelper(false, inputDims, outputDims, strides, dilations, kernelShape, pads, autoPad);
     return outputDims;
   }
 
-  // will compute output shapes for data dimensions ONLY (i.e.) no batch size and channels
-  // called by computePoolOutputShape() and computeConvOutputShape()
-  // adjust pads based on 'autoPad' attribute prior to shape computation
-  private static computeShapeHelper(
-      isGlobalOperator: boolean, inputDims: readonly number[], outputDims: number[], strides: readonly number[],
-      dilations: readonly number[], kernelShape: readonly number[], pads: number[], autoPad?: string) {
+  /**
+   * will compute output shapes for data dimensions ONLY (i.e.) no batch size and channels
+   * called by computePoolOutputShape() and computeConvOutputShape()
+   * adjust pads based on 'autoPad' attribute prior to shape computation
+   *
+   * @param {boolean} isGlobalOperator
+   * @param {readonly number[]} inputDims
+   * @param {number[]} outputDims
+   * @param {readonly number[]} strides
+   * @param {readonly number[]} dilations
+   * @param {readonly number[]} kernelShape
+   * @param {number[]} pads
+   * @param {string} [autoPad]
+   * @private
+   */
+  static computeShapeHelper(
+    isGlobalOperator, inputDims, outputDims, strides, dilations, kernelShape, pads, autoPad
+  ) {
     if (isGlobalOperator) {
       for (let dim = 0; dim < inputDims.length - 2; dim++) {
         outputDims.push(1);
@@ -366,11 +415,23 @@ export class PoolConvUtil {
     }
   }
 
-  // helper for computeShapeHelper() and adjustPadsBasedOnAutoPad()
-  // adjusts pad value for given 'autoPad' string and computes output shape along a particular dimension
-  private static adjustPadAndReturnShape(
-      inSize: number, stride: number, dilation: number, kernel: number, pads: number[], padHeadIndex: number,
-      padTailIndex: number, autoPad?: string): number {
+  /**
+   * helper for computeShapeHelper() and adjustPadsBasedOnAutoPad()
+   * adjusts pad value for given 'autoPad' string and computes output shape along a particular dimension
+   * @param {number} inSize
+   * @param {number} stride
+   * @param {number} dilation
+   * @param {number} kernel
+   * @param {number[]} pads
+   * @param {number} padHeadIndex
+   * @param {number} padTailIndex
+   * @param {string} [autoPad]
+   * @private
+   * @returns {number}
+   */
+  static adjustPadAndReturnShape(
+    inSize, stride, dilation, kernel, pads, padHeadIndex, padTailIndex, autoPad
+  ) {
     const dkernel = dilation * (kernel - 1) + 1;
     if (autoPad && autoPad !== 'NOTSET') {
       switch (autoPad) {
@@ -400,19 +461,31 @@ export class PoolConvUtil {
 }
 
 export class GemmUtil {
-  // will make sure input shapes are compatible for this op
-  // and return back the shape of the output in the form of a tuple
-  // will throw exception if the input shapes are not compatible
+  /**
+   * will make sure input shapes are compatible for this op
+   * and return back the shape of the output in the form of a tuple
+   * will throw exception if the input shapes are not compatible
+   *
+   * @param {readonly number[]} leftShape
+   * @param {boolean} transLeft
+   * @param {readonly number[]} rightShape
+   * @param {boolean} transRight
+   * @param {readonly number[]} [biasShape]
+   * @returns {readonly number[]}
+   */
   static getShapeOfGemmResult(
-      leftShape: readonly number[], transLeft: boolean, rightShape: readonly number[], transRight: boolean,
-      biasShape?: readonly number[]): readonly number[] {
+    leftShape, transLeft, rightShape, transRight, biasShape
+  ) {
     if (leftShape.length !== 2 || rightShape.length !== 2) {
       throw new Error('shape need to be of size 2');
     }
 
-    let M: number;
-    let K: number;
-    let N: number;
+    /** @type {number} */
+    let M;
+    /** @type {number} */
+    let K;
+    /** @type {number} */
+    let N;
 
     if (transLeft) {
       M = leftShape[1];

@@ -6,6 +6,7 @@ import {Tensor} from 'onnxruntime-common';
 /**
  * Copied from ONNX definition. Use this to drop dependency 'onnx_proto' to decrease compiled .js file size.
  */
+/*
 export const enum DataType {
   undefined = 0,
   float = 1,
@@ -25,11 +26,33 @@ export const enum DataType {
   complex128 = 15,
   bfloat16 = 16
 }
-
+*/
+export var DataType;
+(function (DataType) {
+    DataType[DataType["undefined"] = 0] = "undefined";
+    DataType[DataType["float"] = 1] = "float";
+    DataType[DataType["uint8"] = 2] = "uint8";
+    DataType[DataType["int8"] = 3] = "int8";
+    DataType[DataType["uint16"] = 4] = "uint16";
+    DataType[DataType["int16"] = 5] = "int16";
+    DataType[DataType["int32"] = 6] = "int32";
+    DataType[DataType["int64"] = 7] = "int64";
+    DataType[DataType["string"] = 8] = "string";
+    DataType[DataType["bool"] = 9] = "bool";
+    DataType[DataType["float16"] = 10] = "float16";
+    DataType[DataType["double"] = 11] = "double";
+    DataType[DataType["uint32"] = 12] = "uint32";
+    DataType[DataType["uint64"] = 13] = "uint64";
+    DataType[DataType["complex64"] = 14] = "complex64";
+    DataType[DataType["complex128"] = 15] = "complex128";
+    DataType[DataType["bfloat16"] = 16] = "bfloat16";
+})(DataType || (DataType = {}));
 /**
  * Map string tensor data to enum value
+ * @param {string} type
+ * @returns {DataType}
  */
-export const tensorDataTypeStringToEnum = (type: string): DataType => {
+export const tensorDataTypeStringToEnum = (type) => {
   switch (type) {
     case 'int8':
       return DataType.int8;
@@ -63,8 +86,10 @@ export const tensorDataTypeStringToEnum = (type: string): DataType => {
 
 /**
  * Map enum value to string tensor data
+ * @param {DataType} typeProto
+ * @return {Tensor.Type}
  */
-export const tensorDataTypeEnumToString = (typeProto: DataType): Tensor.Type => {
+export const tensorDataTypeEnumToString = (typeProto) => {
   switch (typeProto) {
     case DataType.int8:
       return 'int8';
@@ -98,17 +123,17 @@ export const tensorDataTypeEnumToString = (typeProto: DataType): Tensor.Type => 
 
 /**
  * get tensor element size in bytes by the given data type
- * @returns size in integer or undefined if the data type is not supported
+ * @param {number} dateType
+ * @returns {number|undefined} size in integer or undefined if the data type is not supported
  */
-export const getTensorElementSize = (dateType: number): number|
-    undefined => [undefined, 4, 1, 1, 2, 2, 4, 8, undefined, 1, 2, 8, 4, 8, undefined, undefined, undefined][dateType];
+export const getTensorElementSize = (dateType) => [undefined, 4, 1, 1, 2, 2, 4, 8, undefined, 1, 2, 8, 4, 8, undefined, undefined, undefined][dateType];
 
 /**
  * get typed array constructor by the given tensor type
+ * @param {Tensor.Type} type
+ * @returns {Float32ArrayConstructor|Uint8ArrayConstructor|Int8ArrayConstructor|Uint16ArrayConstructor|Int16ArrayConstructor|Int32ArrayConstructor|BigInt64ArrayConstructor|Uint8ArrayConstructor|Float64ArrayConstructor|Uint32ArrayConstructor|BigUint64ArrayConstructor}
  */
-export const tensorTypeToTypedArrayConstructor = (type: Tensor.Type): Float32ArrayConstructor|Uint8ArrayConstructor|
-    Int8ArrayConstructor|Uint16ArrayConstructor|Int16ArrayConstructor|Int32ArrayConstructor|BigInt64ArrayConstructor|
-    Uint8ArrayConstructor|Float64ArrayConstructor|Uint32ArrayConstructor|BigUint64ArrayConstructor => {
+export const tensorTypeToTypedArrayConstructor = (type) => {
       switch (type) {
         case 'float32':
           return Float32Array;
@@ -139,8 +164,10 @@ export const tensorTypeToTypedArrayConstructor = (type: Tensor.Type): Float32Arr
 
 /**
  * Map string log level to integer value
+ * @param {'verbose'|'info'|'warning'|'error'|'fatal'} [logLevel]
+ * @returns {number}
  */
-export const logLevelStringToEnum = (logLevel?: 'verbose'|'info'|'warning'|'error'|'fatal'): number => {
+export const logLevelStringToEnum = (logLevel) => {
   switch (logLevel) {
     case 'verbose':
       return 0;
