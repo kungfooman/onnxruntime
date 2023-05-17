@@ -1,28 +1,45 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {TensorView} from '../../tensor';
-import {BroadcastUtil, ShapeUtil} from '../../util';
-import {ComputeContext, GpuDataType, ProgramInfo, ProgramInfoLoader, ProgramMetadata} from '../types';
+//import {TensorView} from '../../tensor.js';
+import {BroadcastUtil, ShapeUtil} from '../../util.js';
+import {/*ComputeContext,*/ GpuDataType/*, ProgramInfo, ProgramInfoLoader, ProgramMetadata*/} from '../types.js';
 
-import {createIndicesHelper, ShaderHelper} from './common';
-
+import {createIndicesHelper/*, ShaderHelper*/} from './common.js';
+/*
 type BuiltinFunctionName = string;
 type BinaryCustomExpression = (expressionA: string, expressionB: string) => string;
 type BinaryFunctionCall = BuiltinFunctionName|BinaryCustomExpression|{
   scalar: BinaryCustomExpression;
   vector: BinaryCustomExpression;
 };
-
-const createBinaryOpProgramShader =
-    (shaderHelper: ShaderHelper, dimsA: readonly number[], dimsB: readonly number[], dimsOutput: readonly number[],
-     vectorize: boolean, doBroadcast: boolean, funcCall: BinaryFunctionCall, additionalImplementation?: string,
-     typeA = 'f32', typeB = 'f32', typeOutput = 'f32') => {
+*/
+/**
+ *
+ * @param {ShaderHelper} shaderHelper
+ * @param {readonly number[]} dimsA
+ * @param {readonly number[]} dimsB
+ * @param {readonly number[]} dimsOutput
+ * @param {boolean} vectorize
+ * @param {boolean} doBroadcast
+ * @param {BinaryFunctionCall} funcCall
+ * @param {string} [additionalImplementation]
+ * @param {string} [typeA]
+ * @param {string} [typeB]
+ * @param {string} [typeOutput]
+ * @returns
+ */
+const createBinaryOpProgramShader = (
+  shaderHelper, dimsA, dimsB, dimsOutput,
+  vectorize, doBroadcast, funcCall, additionalImplementation,
+  typeA = 'f32', typeB = 'f32', typeOutput = 'f32'
+) => {
       const outputSize = ShapeUtil.size(dimsOutput);
       const vecSize = Math.ceil(outputSize / 4);
-
-      let expressionScalar: BinaryCustomExpression;
-      let expressionVector: BinaryCustomExpression;
+      /** @type {BinaryCustomExpression} */
+      let expressionScalar;
+      /** @type {BinaryCustomExpression} */
+      let expressionVector;
       if (typeof funcCall === 'string') {
         expressionScalar = expressionVector = (a, b) => `${funcCall}((${a}),(${b}))`;
       } else if (typeof funcCall === 'function') {
@@ -35,9 +52,14 @@ const createBinaryOpProgramShader =
       let broadcastImpl = '';
       const outputIndicesHelper = createIndicesHelper('output', dimsOutput);
       if (doBroadcast) {
-        const calcOffsetImpl = (dims: readonly number[]) => {
+        /**
+         * @param {readonly number[]} dims
+         * @returns {string}
+         */
+        const calcOffsetImpl = (dims) => {
           const strides = ShapeUtil.computeStrides(dims);
-          const offsets: string[] = [];
+          /** @type {string[]} */
+          const offsets = [];
           for (let i = dims.length - 1; i >= 0; i--) {
             const idx = dimsOutput.length === 0 ? '0u' :
                 (dimsOutput.length === 1)       ? '(*outputIndices)' :
@@ -59,8 +81,8 @@ const createBinaryOpProgramShader =
   }
   `;
       }
-
-      let assignment: string;
+      /** @type {string} */
+      let assignment;
       if (vectorize) {
         if (doBroadcast) {
           assignment = `
@@ -76,7 +98,11 @@ const createBinaryOpProgramShader =
         if (!doBroadcast) {
           throw new Error('no necessary to use scalar implementation for element-wise binary op implementation.');
         }
-        const singleAssignment = (x: number) => {
+        /**
+         * @param {number} x
+         * @returns {string}
+         */
+        const singleAssignment = (x) => {
           const expressionA = `aData[indexA${x}][componentA${x}]`;
           const expressionB = `bData[indexB${x}][componentB${x}]`;
           return `
@@ -111,10 +137,19 @@ const createBinaryOpProgramShader =
     ${assignment}
   }`;
     };
-
-const createBinaryOpProgramInfo =
-    (metadata: ProgramMetadata, a: TensorView, b: TensorView, funcCall: BinaryFunctionCall,
-     additionalImplementation?: string, outputDataType: number = a.dataType): ProgramInfo => {
+/**
+ *
+ * @param {ProgramMetadata} metadata
+ * @param {TensorView} a
+ * @param {TensorView} b
+ * @param {BinaryFunctionCall} funcCall
+ * @param {string} {additionalImplementation}
+ * @param {number} {outputDataType}
+ * @returns {ProgramInfo}
+ */
+const createBinaryOpProgramInfo = (
+  metadata, a, b, funcCall, additionalImplementation, outputDataType = a.dataType
+) => {
       const isBroadcast = !ShapeUtil.areEqual(a.dims, b.dims);
       let outputShape = a.dims;
       let outputSize = ShapeUtil.size(a.dims);
@@ -161,31 +196,48 @@ const createBinaryOpProgramInfo =
             ({x: Math.ceil(outputSize / 64 /* workgroup size */ / (vectorize ? 4 : 1) /* vec size */)})
       };
     };
-
-const createBinaryOpProgramInfoLoader =
-    (inputs: readonly TensorView[], name: string, funcCall: BinaryFunctionCall, additionalImplementation?: string,
-     cacheKey?: string): ProgramInfoLoader => {
-      const metadata:
-          ProgramMetadata = {name, inputTypes: [GpuDataType.default, GpuDataType.default], cacheHint: cacheKey};
-      return {
-        ...metadata,
-        get: () => createBinaryOpProgramInfo(metadata, inputs[0], inputs[1], funcCall, additionalImplementation)
-      };
-    };
-
-export const add = (context: ComputeContext): void => {
+/**
+ *
+ * @param {readonly TensorView[]} inputs
+ * @param {string} name
+ * @param {BinaryFunctionCall} funcCall
+ * @param {string} [additionalImplementation]
+ * @param {string} [cacheKey]
+ * @returns {ProgramInfoLoader}
+ */
+const createBinaryOpProgramInfoLoader = (
+  inputs, name, funcCall, additionalImplementation, cacheKey
+) => {
+  /** @type {ProgramMetadata} */
+  const metadata = {name, inputTypes: [GpuDataType.default, GpuDataType.default], cacheHint: cacheKey};
+  return {
+    ...metadata,
+    get: () => createBinaryOpProgramInfo(metadata, inputs[0], inputs[1], funcCall, additionalImplementation)
+  };
+};
+/**
+ * @param {ComputeContext} context
+ */
+export const add = (context) => {
   context.compute(createBinaryOpProgramInfoLoader(context.inputs, 'Add', (a, b) => `${a}+${b}`));
 };
 
-export const div = (context: ComputeContext): void => {
+/**
+ * @param {ComputeContext} context
+ */
+export const div = (context) => {
   context.compute(createBinaryOpProgramInfoLoader(context.inputs, 'Div', (a, b) => `${a}/${b}`));
 };
-
-export const mul = (context: ComputeContext): void => {
+/**
+ * @param {ComputeContext} context
+ */
+export const mul = (context) => {
   context.compute(createBinaryOpProgramInfoLoader(context.inputs, 'Mul', (a, b) => `${a}*${b}`));
 };
-
-export const pow = (context: ComputeContext): void => {
+/**
+ * @param {ComputeContext} context
+ */
+export const pow = (context) => {
   context.compute(createBinaryOpProgramInfoLoader(
       context.inputs, 'Pow', ({scalar: (a, b) => `pow_f32(${a},${b})`, vector: (a, b) => `pow_vf32(${a},${b})`}), `
     fn pow_f32(a : f32, b : f32) -> f32 {
@@ -202,7 +254,9 @@ export const pow = (context: ComputeContext): void => {
     }
       `));
 };
-
-export const sub = (context: ComputeContext): void => {
+/**
+ * @param {ComputeContext} context
+ */
+export const sub = (context) => {
   context.compute(createBinaryOpProgramInfoLoader(context.inputs, 'Sub', (a, b) => `${a}-${b}`));
 };

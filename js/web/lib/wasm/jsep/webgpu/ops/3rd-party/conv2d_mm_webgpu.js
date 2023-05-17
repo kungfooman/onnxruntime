@@ -19,21 +19,39 @@
 //
 // modified to fit the needs of the project
 
-import {LOG_DEBUG} from '../../../log';
-import {TensorView} from '../../../tensor';
-import {ShapeUtil} from '../../../util';
-import {GpuDataType, ProgramInfo, ProgramMetadata} from '../../types';
-import {ConvAttributes} from '../conv';
+import {LOG_DEBUG} from '../../../log.js';
+//import {TensorView} from '../../../tensor.js';
+import {ShapeUtil} from '../../../util.js';
+import {GpuDataType, /*ProgramInfo, ProgramMetadata*/} from '../../types.js';
+//import {ConvAttributes} from '../conv.js';
 
-import {Activation, activationFnSnippet, biasActivationSnippet, typeSnippet} from './activation_util';
-import {utilFunctions} from './conv_util';
-import {makeMatMulPackedSource, makeMatMulPackedVec4Source} from './matmul_packed_webgpu';
-
+import {/*Activation,*/ activationFnSnippet, biasActivationSnippet, typeSnippet} from './activation_util.js';
+import {utilFunctions} from './conv_util.js';
+import {makeMatMulPackedSource, makeMatMulPackedVec4Source} from './matmul_packed_webgpu.js';
+/**
+ *
+ * @param {boolean} isChannelsLast
+ * @param {boolean} fitAOuter
+ * @param {boolean} fitBOuter
+ * @param {boolean} fitInner
+ * @param {boolean} addBias
+ * @param {Activation} [activation]
+ * @param {boolean} hasPreluActivationWeights
+ * @param {number} innerElementSizeX
+ * @param {number} innerElementSizeW
+ * @param {number} innerElementSize
+ * @returns {string}
+ */
 const conv2dCommonSnippet =
-    (isChannelsLast: boolean, fitAOuter: boolean, fitBOuter: boolean, fitInner: boolean, addBias = false,
-     activation?: Activation, hasPreluActivationWeights = false, innerElementSizeX = 4, innerElementSizeW = 4,
-     innerElementSize = 4): string => {
-      const getXSnippet = (innerElementSize: number) => {
+    (isChannelsLast, fitAOuter, fitBOuter, fitInner, addBias = false,
+     activation, hasPreluActivationWeights = false, innerElementSizeX = 4, innerElementSizeW = 4,
+     innerElementSize = 4) => {
+      /**
+       * @param {number} innerElementSize
+       * @throws {Error}
+       * @returns {string}
+       */
+      const getXSnippet = (innerElementSize) => {
         switch (innerElementSize) {
           case 1:
             return 'resData = x[xIndex];';
@@ -45,7 +63,13 @@ const conv2dCommonSnippet =
             throw new Error(`innerElementSize ${innerElementSize} is not supported.`);
         }
       };
-      const getWSnippet = (innerElementSize: number) => {
+      /**
+       *
+       * @param {number} innerElementSize
+       * @throws {Error}
+       * @returns {string}
+       */
+      const getWSnippet = (innerElementSize) => {
         switch (innerElementSize) {
           case 1:
             return 'return w[row * wShape[3] + colIn];';
@@ -149,11 +173,24 @@ const conv2dCommonSnippet =
     }`;
       return userCode;
     };
-
-export const createConv2DMatMulProgramInfo =
-    (inputs: readonly TensorView[], metadata: ProgramMetadata, attributes: ConvAttributes,
-     outputShape: readonly number[], dimAOuter: number, dimBOuter: number, dimInner: number, hasBias: boolean,
-     sequentialAccessByThreads: boolean): ProgramInfo => {
+/**
+ *
+ * @param {readonly TensorView[]} inputs
+ * @param {ProgramMetadata} metadata
+ * @param {ConvAttributes} attributes
+ * @param {readonly number[]} outputShape
+ * @param {number} dimAOuter
+ * @param {number} dimBOuter
+ * @param {number} dimInner
+ * @param {boolean} hasBias
+ * @param {boolean} sequentialAccessByThreads
+ * @returns {ProgramInfo}
+ */
+export const createConv2DMatMulProgramInfo = (
+  inputs, metadata, attributes,
+  outputShape, dimAOuter, dimBOuter, dimInner, hasBias,
+  sequentialAccessByThreads
+) => {
       const isChannelsLast = attributes.format === 'NHWC';
       const inChannels = isChannelsLast ? inputs[0].dims[3] : inputs[0].dims[1];
       const batchSize = outputShape[0];
@@ -167,7 +204,8 @@ export const createConv2DMatMulProgramInfo =
       // TODO: fine tune size
       const dispatchX = isChannelsLast ? outChannels : outWidth * outHeight;
       const dispatchY = isChannelsLast ? outWidth * outHeight : outChannels;
-      const workGroupSize: [number, number, number] =
+      /** @type {[number, number, number]} */
+      const workGroupSize =
           isVec4 ? [8, 8, 1] : [dispatchX <= 4 ? 4 : 16, dispatchX > 4 && dispatchY <= 4 ? 4 : 16, 1];
       const elementsPerThread =
           isVec4 ? [4, 4, 1] : [dispatchX <= 4 ? 1 : 2, dispatchX > 4 && dispatchY <= 4 ? 1 : 2, 1];

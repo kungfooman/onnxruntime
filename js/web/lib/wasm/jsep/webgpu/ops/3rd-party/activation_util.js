@@ -19,9 +19,12 @@
 //
 // modified to fit the needs of the project
 
-export declare type Activation = 'linear' | 'relu' | 'prelu' | 'elu' | 'relu6' | 'leakyrelu' | 'sigmoid';
-
-export const typeSnippet = (component: number) => {
+//export declare type Activation = 'linear' | 'relu' | 'prelu' | 'elu' | 'relu6' | 'leakyrelu' | 'sigmoid';
+/**
+ * @param {number} component
+ * @throws {Error}
+ */
+export const typeSnippet = (component) => {
   switch (component) {
     case 1:
       return 'f32';
@@ -35,9 +38,16 @@ export const typeSnippet = (component: number) => {
       throw new Error(`${component}-component is not supported.`);
   }
 };
-
+/**
+ *
+ * @param {Activation} [activation]
+ * @param {boolean} [_hasPreluActivationWeights]
+ * @param {boolean} [_packed]
+ * @param {number} [_coordsLength]
+ * @returns {string}
+ */
 export const activationFnSnippet =
-    (activation?: Activation, _hasPreluActivationWeights = false, _packed = false, _coordsLength = 3): string => {
+    (activation, _hasPreluActivationWeights = false, _packed = false, _coordsLength = 3) => {
       if (!activation) {
         return '';
       }
@@ -45,8 +55,13 @@ export const activationFnSnippet =
       // TODO: add implementations
       return '';
     };
-
-export const biasActivationSnippet = (hasBias: boolean, activation?: Activation): string => `
+/**
+ *
+ * @param {boolean} hasBias
+ * @param {Activation} [activation]
+ * @returns {string}
+ */
+export const biasActivationSnippet = (hasBias, activation) => `
       ${hasBias ? 'value = value + getBiasByOutputCoords(coords);' : ''}
       ${activation ? 'value = activation(value, coords);' : ''}
       `;

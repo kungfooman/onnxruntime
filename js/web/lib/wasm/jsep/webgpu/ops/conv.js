@@ -1,34 +1,43 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {DataType} from '../../../wasm-common';
-import {TensorView} from '../../tensor';
-import {PoolConvUtil} from '../../util';
-import {AttributeWithCacheKey, createAttributeWithCacheKey} from '../attribute-with-cache-key';
-import {ComputeContext} from '../types';
+import {DataType} from '../../../wasm-common.js';
+//import {TensorView} from '../../tensor.js';
+import {PoolConvUtil} from '../../util.js';
+import {/*AttributeWithCacheKey,*/ createAttributeWithCacheKey} from '../attribute-with-cache-key.js';
+//import {ComputeContext} from '../types.js';
 
-import {createGroupedConvProgramInfoLoader} from './conv-grouped';
-import {createConv2DMatMulProgramInfoLoader} from './conv2d-mm';
-import {InternalActivationAttributes, parseInternalActivationAttributes} from './fuse-utils';
-import {createTransposeProgramInfo, TransposeAttributes, transposeProgramMetadata} from './transpose';
-
-export const calculateOutputShape =
-    (inputShape: readonly number[], kernelShape: readonly number[], dilations: readonly number[],
-     adjustPads: readonly number[], strides: readonly number[], isChannelLast: boolean): number[] => {
-      const batchSize = inputShape[0];
-      const inputSpatialShape = inputShape.slice(isChannelLast ? 1 : 2, isChannelLast ? 3 : 4);
-      const spatialRank = inputSpatialShape.length;
-      const outChannels = kernelShape[0];
-      const kernelSpatialShape = kernelShape.slice(2);
-      const dilatedKernelShape = kernelSpatialShape.map((v, i) => v + (v - 1) * (dilations[i] - 1));
-      const inputSpatialShapeWithPad = inputSpatialShape.map((v, i) => v + adjustPads[i] + adjustPads[i + spatialRank]);
-      const outputShape =
-          inputSpatialShapeWithPad.map((v, i) => Math.floor((v - dilatedKernelShape[i] + strides[i]) / strides[i]));
-      outputShape.splice(0, 0, batchSize);
-      outputShape.splice(isChannelLast ? 3 : 1, 0, outChannels);
-      return outputShape;
-    };
-
+import {createGroupedConvProgramInfoLoader} from './conv-grouped.js';
+import {createConv2DMatMulProgramInfoLoader} from './conv2d-mm.js';
+import {/*InternalActivationAttributes,*/ parseInternalActivationAttributes} from './fuse-utils.js';
+import {createTransposeProgramInfo,/* TransposeAttributes,*/ transposeProgramMetadata} from './transpose.js';
+/**
+ *
+ * @param {readonly number[]} inputShape
+ * @param {readonly number[]} kernelShape
+ * @param {readonly number[]} dilations
+ * @param {readonly number[]} adjustPads
+ * @param {readonly number[]} strides
+ * @param {boolean} isChannelLast
+ * @returns {number[]}
+ */
+export const calculateOutputShape = (
+  inputShape, kernelShape, dilations, adjustPads, strides, isChannelLast
+) => {
+  const batchSize = inputShape[0];
+  const inputSpatialShape = inputShape.slice(isChannelLast ? 1 : 2, isChannelLast ? 3 : 4);
+  const spatialRank = inputSpatialShape.length;
+  const outChannels = kernelShape[0];
+  const kernelSpatialShape = kernelShape.slice(2);
+  const dilatedKernelShape = kernelSpatialShape.map((v, i) => v + (v - 1) * (dilations[i] - 1));
+  const inputSpatialShapeWithPad = inputSpatialShape.map((v, i) => v + adjustPads[i] + adjustPads[i + spatialRank]);
+  const outputShape =
+      inputSpatialShapeWithPad.map((v, i) => Math.floor((v - dilatedKernelShape[i] + strides[i]) / strides[i]));
+  outputShape.splice(0, 0, batchSize);
+  outputShape.splice(isChannelLast ? 3 : 1, 0, outChannels);
+  return outputShape;
+};
+/*
 export interface ConvAttributes extends InternalActivationAttributes, AttributeWithCacheKey {
   readonly autoPad: string;
   readonly dilations: readonly number[];
@@ -39,11 +48,19 @@ export interface ConvAttributes extends InternalActivationAttributes, AttributeW
   readonly strides: readonly number[];
   readonly wIsConst: boolean;
 }
-
-// for transposing weight tensor from [M, C/group, KH, KW] to [KH, KW, C/group, M]
-const weightTransposeAttribute: TransposeAttributes = createAttributeWithCacheKey({perm: [2, 3, 1, 0]});
-
-const validateInputs = (inputs: readonly TensorView[], attributes: ConvAttributes): void => {
+*/
+/**
+ * for transposing weight tensor from [M, C/group, KH, KW] to [KH, KW, C/group, M]
+ * @type {TransposeAttributes}
+ */
+const weightTransposeAttribute = createAttributeWithCacheKey({perm: [2, 3, 1, 0]});
+/**
+ *
+ * @param {readonly TensorView[]} inputs
+ * @param {ConvAttributes} attributes
+ * @throws {Error}
+ */
+const validateInputs = (inputs, attributes) => {
   // Refer to the below link for all input checks
   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Conv
   if (!inputs || (inputs.length !== 2 && inputs.length !== 3)) {
@@ -102,8 +119,13 @@ const validateInputs = (inputs: readonly TensorView[], attributes: ConvAttribute
     throw new Error('Conv input(bias) should be float tensor');
   }
 };
-
-const getAdjustedConvAttributes = <T extends ConvAttributes>(attributes: T, inputs: readonly TensorView[]): T => {
+/**
+ * @param {T} attributes
+ * @param {readonly TensorView[]} inputs
+ * @template {ConvAttributes} T
+ * @returns {T}
+ */
+const getAdjustedConvAttributes = (attributes, inputs) => {
   const kernelShape = attributes.kernelShape.slice();
   // if kernelShape is not specified in the attributes of this op, infer it from the weight tensor dims
   for (let i = 2; i < inputs[1].dims.length; ++i) {
@@ -116,29 +138,43 @@ const getAdjustedConvAttributes = <T extends ConvAttributes>(attributes: T, inpu
       inputs[0].dims, attributes.strides, attributes.dilations, kernelShape, pads, attributes.format === 'NHWC',
       attributes.autoPad);
 
-  // always return a new object so does not modify the original attributes
-  const newAttributes: T = Object.assign({}, attributes);
+  /**
+   * always return a new object so does not modify the original attributes
+   * @type {T}
+   */
+  const newAttributes = Object.assign({}, attributes);
   Object.assign(newAttributes, {kernelShape, pads, cacheKey: attributes.cacheKey});
   return newAttributes;
 };
-
-export const parseConvAttributes = (attributes: Record<string, unknown>): ConvAttributes => {
+/**
+ *
+ * @param {Record<string, unknown>} attributes
+ * @returns {ConvAttributes}
+ */
+export const parseConvAttributes = (attributes) => {
   const activationAttributes = parseInternalActivationAttributes(attributes);
   // TODO : Make this generic enough to compute default attributes for multi-dimensional conv
-  const format = attributes.format as 'NHWC' | 'NCHW';
-  const autoPad = ['NOTSET', 'VALID', 'SAME_UPPER', 'SAME_LOWER'][attributes.auto_pad as number];
-  const dilations = attributes.dilations as [number, number];
-  const group = attributes.group as number;
-  const kernelShape = attributes.kernel_shape as [number, number];
-  const pads = attributes.pads as [number, number, number, number];
-  const strides = attributes.strides as [number, number];
-  const wIsConst = (attributes.w_is_const as () => boolean)();
+  const format = attributes.format /*as 'NHWC' | 'NCHW'*/;
+  const autoPad = ['NOTSET', 'VALID', 'SAME_UPPER', 'SAME_LOWER'][attributes.auto_pad /*as number*/];
+  const dilations = attributes.dilations /*as [number, number]*/;
+  const group = attributes.group /*as number*/;
+  const kernelShape = attributes.kernel_shape /*as [number, number]*/;
+  const pads = attributes.pads /*as [number, number, number, number]*/;
+  const strides = attributes.strides /*as [number, number]*/;
+  const wIsConst = (attributes.w_is_const /*as () => boolean*/)();
 
-  return createAttributeWithCacheKey(
-      {autoPad, format, dilations, group, kernelShape, pads, strides, wIsConst, ...activationAttributes});
+  return createAttributeWithCacheKey({
+    autoPad, format, dilations, group, kernelShape, pads, strides, wIsConst, ...activationAttributes
+  });
 };
-
-const conv2d = (context: ComputeContext, inputs: readonly TensorView[], attributes: ConvAttributes): void => {
+/**
+ *
+ * @param {ComputeContext} context
+ * @param {readonly TensorView[]} inputs
+ * @param {ConvAttributes} attributes
+ * @returns {void}
+ */
+const conv2d = (context, inputs, attributes) => {
   const adjustedAttributes = getAdjustedConvAttributes(attributes, inputs);
 
   // check attributes
@@ -187,7 +223,7 @@ const conv2d = (context: ComputeContext, inputs: readonly TensorView[], attribut
   const sequentialAccessByThreads = /* backend.adapterInfo.isIntel() */ true;
 
   // STEP.1: transpose weight
-  const transposedWeight = (context.customData.wT as TensorView | undefined) ??
+  const transposedWeight = (context.customData.wT /*as TensorView | undefined*/) ??
       context.compute(
           {
             ...transposeProgramMetadata,
@@ -216,8 +252,12 @@ const conv2d = (context: ComputeContext, inputs: readonly TensorView[], attribut
           sequentialAccessByThreads),
       {inputs: convInputs});
 };
-
-const conv1d = (context: ComputeContext, attributes: ConvAttributes): void => {
+/**
+ * @param {ComputeContext} context
+ * @param {ConvAttributes} attributes
+ * @returns {void}
+ */
+const conv1d = (context, attributes) => {
   // extend the input to 2D by adding H dimension
   const isChannelLast = attributes.format === 'NHWC';
   const inputs = [
@@ -242,8 +282,13 @@ const conv1d = (context: ComputeContext, attributes: ConvAttributes): void => {
       inputs, adjustedAttributes,
       outputShape => isChannelLast ? [outputShape[0], outputShape[2], outputShape[3]] : []));
 };
-
-export const conv = (context: ComputeContext, attributes: ConvAttributes): void => {
+/**
+ *
+ * @param {ComputeContext} context
+ * @param {ConvAttributes} attributes
+ * @returns {void}
+ */
+export const conv = (context, attributes) => {
   validateInputs(context.inputs, attributes);  // currently will fail if not conv1D/2D
   if (context.inputs[0].dims.length === 3) {
     conv1d(context, attributes);

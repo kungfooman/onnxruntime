@@ -1,24 +1,36 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {TensorView} from '../../tensor';
-import {ShapeUtil} from '../../util';
-import {GpuDataType, ProgramInfo, ProgramInfoLoader, ProgramMetadata} from '../types';
+//import {TensorView} from '../../tensor';
+import {ShapeUtil} from '../../util.js';
+import {GpuDataType, /*ProgramInfo, ProgramInfoLoader, ProgramMetadata*/} from '../types.js';
 
-import {createIndicesHelper, ShaderHelper} from './common';
-import {calculateOutputShape, ConvAttributes} from './conv';
-import {getActicationSnippet} from './fuse-utils';
-
-const createGroupedConvProgramMetadata = (hasBias: boolean, cacheHint: string): ProgramMetadata => ({
+import {createIndicesHelper, /*ShaderHelper*/} from './common.js';
+import {calculateOutputShape/*, ConvAttributes*/} from './conv.js';
+import {getActicationSnippet} from './fuse-utils.js';
+/**
+ *
+ * @param {boolean} hasBias
+ * @param {string} cacheHint
+ * @returns {ProgramMetadata}
+ */
+const createGroupedConvProgramMetadata = (hasBias, cacheHint) => ({
   name: 'GroupedConv',
   inputTypes: hasBias ? [GpuDataType.default, GpuDataType.default, GpuDataType.default] :
                         [GpuDataType.default, GpuDataType.default],
   cacheHint
 });
-
-const createGroupedConvProgramInfo =
-    (inputs: readonly TensorView[], metadata: ProgramMetadata, attributes: ConvAttributes,
-     squeezeOutputShapeFunction?: (shape: readonly number[]) => number[]): ProgramInfo => {
+/**
+ *
+ * @param {readonly TensorView[]} inputs
+ * @param {ProgramMetadata} metadata
+ * @param {ConvAttributes} attributes
+ * @param {(shape: readonly number[]) => number[]} [squeezeOutputShapeFunction]
+ * @returns {ProgramInfo}
+ */
+const createGroupedConvProgramInfo = (
+  inputs, metadata, attributes, squeezeOutputShapeFunction
+) => {
       const hasBias = inputs.length > 2;
       const processBias = hasBias ? 'value += b[output_channel];' : '';
       const xShape = inputs[0].dims;
@@ -42,8 +54,11 @@ const createGroupedConvProgramInfo =
       const outputIndicesHelper = createIndicesHelper('output', outputShape);
       const xIndicesHelper = createIndicesHelper('x', xShape);
       const wIndicesHelper = createIndicesHelper('w', wShape);
-
-      const getShaderSource = (shaderHelper: ShaderHelper) => `
+      /**
+       * @param {ShaderHelper} shaderHelper
+       * @returns {string}
+       */
+      const getShaderSource = (shaderHelper) => `
   const strides: vec2<u32> = vec2(${attributes.strides[0]}u, ${attributes.strides[1]}u);
   const pads: vec2<u32> = vec2(${attributes.pads[0]}u, ${attributes.pads[1]}u);
 
@@ -117,14 +132,17 @@ const createGroupedConvProgramInfo =
 
 /**
  * naive grouped conv implementation, supports 1d/2d conv
- * @param squeezeOutputShapeFunction - an optional function to squeeze the output shape, only used in conv1d
+ * @param {readonly TensorView[]} inputs
+ * @param {ConvAttributes} attributes
+ * @param {(shape: readonly number[]) => number[]} [squeezeOutputShapeFunction] - an optional function to squeeze the output shape, only used in conv1d
+ * @returns {ProgramInfoLoader}
  */
-export const createGroupedConvProgramInfoLoader =
-    (inputs: readonly TensorView[], attributes: ConvAttributes,
-     squeezeOutputShapeFunction?: (shape: readonly number[]) => number[]): ProgramInfoLoader => {
-      const metadata = createGroupedConvProgramMetadata(inputs.length > 2, attributes.cacheKey);
-      return {
-        ...metadata,
-        get: () => createGroupedConvProgramInfo(inputs, metadata, attributes, squeezeOutputShapeFunction)
-      };
-    };
+export const createGroupedConvProgramInfoLoader = (
+  inputs, attributes, squeezeOutputShapeFunction
+) => {
+  const metadata = createGroupedConvProgramMetadata(inputs.length > 2, attributes.cacheKey);
+  return {
+    ...metadata,
+    get: () => createGroupedConvProgramInfo(inputs, metadata, attributes, squeezeOutputShapeFunction)
+  };
+};

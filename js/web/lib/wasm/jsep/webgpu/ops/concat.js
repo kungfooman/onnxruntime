@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {TensorView} from '../../tensor';
-import {ShapeUtil} from '../../util';
-import {AttributeWithCacheKey} from '../attribute-with-cache-key';
-import {ComputeContext, GpuDataType, ProgramInfo, ProgramInfoLoader, ProgramMetadata} from '../types';
+//import {TensorView} from '../../tensor';
+import {ShapeUtil} from '../../util.js';
+//import {AttributeWithCacheKey} from '../attribute-with-cache-key.js';
+import {/*ComputeContext,*/ GpuDataType/*, ProgramInfo, ProgramInfoLoader, ProgramMetadata*/} from '../types.js';
 
-import {createIndicesHelper, IndicesHelper, ShaderHelper} from './common';
+import {createIndicesHelper/*, IndicesHelper, ShaderHelper*/} from './common.js';
 
 /*
 export interface ConcatAttributes extends AttributeWithCacheKey {
@@ -16,6 +16,7 @@ export interface ConcatAttributes extends AttributeWithCacheKey {
 
 /**
  * @param {readonly TensorView[]} inputs
+ * @throws {Error}
  * @returns {void}
  */
 const validateInputs = (inputs) => {

@@ -23,6 +23,11 @@
     import * as pool from "./web/lib/wasm/jsep/webgpu/ops/pool.js";
     import * as matmul from "./web/lib/wasm/jsep/webgpu/ops/matmul.js";
     import * as gemm from "./web/lib/wasm/jsep/webgpu/ops/gemm.js";
+    import * as binaryOp from "./web/lib/wasm/jsep/webgpu/ops/binary-op.js";
+    import * as concat from "./web/lib/wasm/jsep/webgpu/ops/concat.js";
+    import * as convGrouped from "./web/lib/wasm/jsep/webgpu/ops/conv-grouped.js";
+    import * as unaryOp from "./web/lib/wasm/jsep/webgpu/ops/unary-op.js";
+    import * as opResolveRules from "./web/lib/wasm/jsep/webgpu/op-resolve-rules.js";
     const tensor = new common.Tensor("float32", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], [3, 4])
     Object.assign(window, {
         common,
@@ -31,5 +36,10 @@
         pool,
         matmul,
         gemm,
+        binaryOp,
+        concat,
+        convGrouped,
+        unaryOp,
+        opResolveRules,
     });
 </script>

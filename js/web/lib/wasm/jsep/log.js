@@ -1,26 +1,36 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {Env} from 'onnxruntime-common';
+import { env } from 'onnxruntime-common';
 
-import {logLevelStringToEnum} from '../wasm-common';
+import {logLevelStringToEnum} from '../wasm-common.js';
 
-type LogLevel = NonNullable<Env['logLevel']>;
-type MessageString = string;
-type MessageFunction = () => string;
-type Message = MessageString|MessageFunction;
+//type LogLevel = NonNullable<Env['logLevel']>;
+//type MessageString = string;
+//type MessageFunction = () => string;
+//type Message = MessageString|MessageFunction;
 
 const logLevelPrefix = ['V', 'I', 'W', 'E', 'F'];
-
-const doLog = (level: number, message: string): void => {
+/**
+ *
+ * @param {number} level
+ * @param {string} message
+ * @returns {void}
+ */
+const doLog = (level, message) => {
   // eslint-disable-next-line no-console
   console.log(`[${logLevelPrefix[level]},${new Date().toISOString()}]${message}`);
 };
-
-let configLogLevel: LogLevel|undefined;
-let debug: boolean|undefined;
-
-export const configureLogger = ($configLogLevel: LogLevel, $debug: boolean): void => {
+/** @type {LogLevel|undefined} */
+let configLogLevel;
+/** @type {boolean|undefined} */
+let debug;
+/**
+ * @param {LogLevel} $configLogLevel
+ * @param {boolean} $debug
+ * @returns {void}
+ */
+export const configureLogger = ($configLogLevel, $debug) => {
   configLogLevel = $configLogLevel;
   debug = $debug;
 };
@@ -28,18 +38,24 @@ export const configureLogger = ($configLogLevel: LogLevel, $debug: boolean): voi
 /**
  * A simple logging utility to log messages to the console.
  */
-export const LOG = (logLevel: LogLevel, msg: Message): void => {
+/**
+ * @param {LogLevel} logLevel
+ * @param {Message} msg
+ * @returns {void}
+ */
+export const LOG = (logLevel, msg) => {
   const messageLevel = logLevelStringToEnum(logLevel);
   const configLevel = logLevelStringToEnum(configLogLevel);
   if (messageLevel >= configLevel) {
     doLog(messageLevel, typeof msg === 'function' ? msg() : msg);
   }
 };
-
 /**
  * A simple logging utility to log messages to the console. Only logs when debug is enabled.
+ * args is Parameters<typeof LOG>
+ * @type {typeof LOG}
  */
-export const LOG_DEBUG: typeof LOG = (...args: Parameters<typeof LOG>) => {
+export const LOG_DEBUG = (...args) => {
   if (debug) {
     LOG(...args);
   }
