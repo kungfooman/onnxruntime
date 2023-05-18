@@ -9,6 +9,14 @@ import {/*ComputeContext,*/ GpuDataType/*, ProgramInfo*/} from '../types.js';
 
 import {createIndicesHelper/*, ShaderHelper*/} from './common.js';
 
+/** @typedef {import('../attribute-with-cache-key.js').AttributeWithCacheKey} AttributeWithCacheKey */
+
+/**
+ * @see https://stackoverflow.com/questions/36737921/how-to-extend-a-typedef-parameter-in-jsdoc
+ * @typedef {Object} TransposeAttributes_
+ * @property {number[]} perm This is readonly.
+ * @typedef {AttributeWithCacheKey & TransposeAttributes_} TransposeAttributes
+ */
 /*
 export interface TransposeAttributes extends AttributeWithCacheKey {
   readonly perm: number[];

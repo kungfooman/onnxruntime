@@ -26,11 +26,10 @@ class AttributeWithCacheKeyImpl {
     return this._cacheKey;
   }
 }
-/*
-export interface AttributeWithCacheKey {
-  readonly cacheKey: string;
-}
-*/
+/**
+ * @typedef {Object} AttributeWithCacheKey
+ * @property {string} cacheKey This is readonly.
+ */
 /**
  * create a new object from the given attribute, and add a cacheKey property to it
  *

@@ -1,16 +1,22 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 //import {TensorView} from '../../tensor';
 import {MAX_CLIP, MIN_CLIP, ShapeUtil} from '../../util.js';
 import {/*AttributeWithCacheKey,*/ createAttributeWithCacheKey} from '../attribute-with-cache-key.js';
 import {/*ComputeContext,*/ GpuDataType/*, ProgramInfo, ProgramInfoLoader, ProgramMetadata*/} from '../types.js';
-
+/** @typedef {import('../attribute-with-cache-key.js').AttributeWithCacheKey} AttributeWithCacheKey */
 //import {ShaderHelper} from './common.js';
-
-//type BuiltinFunctionName = string;
-//type ElementwiseCustomExpression = (expression: string) => string;
-//type ElementwiseFunctionCall = BuiltinFunctionName|ElementwiseCustomExpression;
+/**
+ * @typedef {string} BuiltinFunctionName
+ */
+/**
+ * @callback ElementwiseCustomExpression
+ * @param {string} expression
+ * @returns {string}
+ */
+/**
+ * @typedef {BuiltinFunctionName|ElementwiseCustomExpression} ElementwiseFunctionCall
+ */
 /**
  *
  * @param {ShaderHelper} shaderHelper
@@ -23,15 +29,14 @@ const createElementwiseProgramShader = (
   shaderHelper, datasize, funcCall,
   additionalImplementation
 ) => {
-      const vecSize = Math.ceil(datasize / 4);
-
-      let expression = '';
-      if (typeof funcCall === 'string') {
-        expression = `${funcCall}(a)`;
-      } else {
-        expression = funcCall('a');
-      }
-      return `
+  const vecSize = Math.ceil(datasize / 4);
+  let expression = '';
+  if (typeof funcCall === 'string') {
+    expression = `${funcCall}(a)`;
+  } else {
+    expression = funcCall('a');
+  }
+  return `
   @group(0) @binding(0) var<storage, read> inputData : array<vec4<f32>>;
   @group(0) @binding(1) var<storage, read_write> outputData : array<vec4<f32>>;
 
@@ -43,7 +48,7 @@ const createElementwiseProgramShader = (
     let a = inputData[global_idx];
     outputData[global_idx] = ${expression};
   }`;
-    };
+};
 /**
  *
  * @param {ProgramMetadata} metadata
