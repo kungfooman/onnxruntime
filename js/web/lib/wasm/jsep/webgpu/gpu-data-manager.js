@@ -1,41 +1,73 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {WebGpuBackend} from '../backend-webgpu';
-import {LOG_DEBUG} from '../log';
+import {WebGpuBackend} from '../backend-webgpu.js';
+import {LOG_DEBUG} from '../log.js';
 
-import {GpuData, GpuDataId, GpuDataType} from './types';
+import {
+  // GpuData,
+  // GpuDataId,
+  GpuDataType
+} from './types.js';
 
 /**
  * manages GpuDataId -> GpuBuffer
+ *
+ * @interface
  */
-export interface GpuDataManager {
+export class GpuDataManager {
   /**
    * copy data from CPU to GPU.
+   * @param {GpuDataId}
+   * @param {Uint8Array}
+   * @returns {void}
    */
-  upload(id: GpuDataId, data: Uint8Array): void;
+  upload(id, data) {
+    throw "not implemented";
+  }
   /**
    * copy data from GPU to GPU.
+   * @param {GpuDataId} sourceId
+   * @param {GpuDataId} destinationId
+   * @returns {void}
    */
-  memcpy(sourceId: GpuDataId, destinationId: GpuDataId): void;
+  memcpy(sourceId, destinationId) {
+    throw "not implemented";
+  }
   /**
    * create new data on GPU.
+   * @param {number} size
+   * @param {number} [usage]
+   * @returns {GpuData}
    */
-  create(size: number, usage?: number): GpuData;
+  create(size, usage) {
+    throw "not implemented";
+  }
   /**
    * get GPU data by ID.
+   * @param {GpuDataId} id
+   * @param {}
+   * @returns {GpuData|undefined}
    */
-  get(id: GpuDataId): GpuData|undefined;
+  get(id) {
+    throw "not implemented";
+  }
   /**
    * release the data on GPU by ID.
-   *
-   * @return size of the data released
+   * @param {GpuDataId} id
+   * @returns {number} size of the data released
    */
-  release(id: GpuDataId): number;
+  release(id) {
+    throw "not implemented";
+  }
   /**
    * copy data from GPU to CPU.
+   * @param {GpuDataId} id
+   * @returns {Promise<ArrayBufferLike>}
    */
-  download(id: GpuDataId): Promise<ArrayBufferLike>;
+  download(id) {
+    throw "not implemented";
+  }
 
   /**
    * refresh the buffers that marked for release.
@@ -43,47 +75,81 @@ export interface GpuDataManager {
    * when release() is called, the buffer is not released immediately. this is because we need to wait for the commands
    * to be submitted to the GPU. this function is called after the commands are submitted so that the buffers can be
    * actually released.
+   * @returns {void}
    */
-  refreshPendingBuffers(): void;
-}
-
-interface StorageCacheValue {
-  gpuData: GpuData;
-  originalSize: number;
-}
-
-interface DownloadCacheValue {
-  data: Promise<ArrayBufferLike>;
+  refreshPendingBuffers() {
+    throw "not implemented";
+  }
 }
 
 /**
- * normalize the buffer size so that it fits the 128-bits (16 bytes) alignment.
+ * @typedef {object} StorageCacheValue
+ * @property {GpuData} gpuData
+ * @property {number} originalSize
  */
-const calcNormalizedBufferSize = (size: number) => Math.ceil(size / 16) * 16;
+
+/**
+ * @typedef {object} DownloadCacheValue
+ * @property {Promise<ArrayBufferLike>} data
+ */
+
+/**
+ * normalize the buffer size so that it fits the 128-bits (16 bytes) alignment.
+ *
+ * @param {number} size
+ */
+const calcNormalizedBufferSize = (size) => Math.ceil(size / 16) * 16;
 
 let guid = 0;
 const createNewGpuDataId = () => guid++;
 
-class GpuDataManagerImpl implements GpuDataManager {
-  // GPU Data ID => GPU Data ( storage buffer )
-  storageCache: Map<GpuDataId, StorageCacheValue>;
-
-  // GPU Data ID => GPU Data ( read buffer )
-  downloadCache: Map<GpuDataId, DownloadCacheValue>;
-
-  // pending buffers for uploading ( data is unmapped )
-  private buffersForUploadingPending: GPUBuffer[];
-  // pending buffers for computing
-  private buffersPending: GPUBuffer[];
-
-  constructor(private backend: WebGpuBackend /* , private reuseBuffer: boolean */) {
+class GpuDataManagerImpl extends GpuDataManager {
+  /**
+   * GPU Data ID => GPU Data ( storage buffer )
+   * @type {Map<GpuDataId, StorageCacheValue>}
+   * */
+  storageCache;
+  /**
+   * GPU Data ID => GPU Data ( read buffer )
+   * @type {Map<GpuDataId, DownloadCacheValue>}
+   * */
+  downloadCache;
+  /**
+   * pending buffers for uploading ( data is unmapped )
+   * @type {GPUBuffer[]}
+   * @private
+   */
+  buffersForUploadingPending;
+  /**
+   * pending buffers for computing
+   * @type {GPUBuffer[]}
+   * @private
+   */
+  buffersPending;
+  /**
+   * @type {WebGpuBackend}
+   * @private
+   */
+  backend;
+  /**
+   *
+   * @param {WebGpuBackend} backend
+   */
+  constructor(backend /* , private reuseBuffer: boolean */) {
+    super(backend);
+    this.backend = backend;
     this.storageCache = new Map();
     this.downloadCache = new Map();
     this.buffersForUploadingPending = [];
     this.buffersPending = [];
   }
 
-  upload(id: GpuDataId, data: Uint8Array): void {
+  /**
+   * @param {GpuDataId} id
+   * @param {Uint8Array} data
+   * @returns {void}
+   */
+  upload(id, data) {
     const srcArrayBuffer = data.buffer;
     const srcOffset = data.byteOffset;
     const srcLength = data.byteLength;
@@ -118,8 +184,13 @@ class GpuDataManagerImpl implements GpuDataManager {
 
     this.buffersForUploadingPending.push(gpuBufferForUploading);
   }
-
-  memcpy(sourceId: GpuDataId, destinationId: GpuDataId): void {
+  /**
+   *
+   * @param {GpuDataId} sourceId
+   * @param {GpuDataId} destinationId
+   * @returns {void}
+   */
+  memcpy(sourceId, destinationId) {
     // get source gpu buffer
     const sourceGpuDataCache = this.storageCache.get(sourceId);
     if (!sourceGpuDataCache) {
@@ -140,7 +211,13 @@ class GpuDataManagerImpl implements GpuDataManager {
   }
 
   // eslint-disable-next-line no-bitwise
-  create(size: number, usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST): GpuData {
+  /**
+   *
+   * @param {number} size
+   * @param {*} usage
+   * @returns {GpuData}
+   */
+  create(size, usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST) {
     // !!!
     // !!! IMPORTANT: TODO: whether we should keep the storage buffer every time, or always create new ones.
     // !!!                  This need to be figured out by performance test results.
@@ -157,12 +234,19 @@ class GpuDataManagerImpl implements GpuDataManager {
     LOG_DEBUG('verbose', () => `[WebGPU] GpuDataManager.create(size=${size}) => id=${gpuData.id}`);
     return gpuData;
   }
-
-  get(id: GpuDataId): GpuData|undefined {
+  /**
+   *
+   * @param {GpuDataId} id
+   * @returns {GpuData|undefined}
+   */
+  get(id) {
     return this.storageCache.get(id)?.gpuData;
   }
-
-  release(id: GpuDataId): number {
+  /**
+   * @param {GpuDataId} id
+   * @returns {number}
+   */
+  release(id) {
     const cachedData = this.storageCache.get(id);
     if (!cachedData) {
       throw new Error('releasing data does not exist');
@@ -181,8 +265,12 @@ class GpuDataManagerImpl implements GpuDataManager {
 
     return cachedData.originalSize;
   }
-
-  async download(id: GpuDataId): Promise<ArrayBufferLike> {
+  /**
+   *
+   * @param {GpuDataId} id
+   * @returns {Promise<ArrayBufferLike>}
+   */
+  async download(id) {
     const downloadData = this.downloadCache.get(id);
     if (downloadData) {
       return downloadData.data;
@@ -216,8 +304,10 @@ class GpuDataManagerImpl implements GpuDataManager {
 
     return readDataPromise;
   }
-
-  refreshPendingBuffers(): void {
+  /**
+   * @returns {void}
+   */
+  refreshPendingBuffers() {
     for (const buffer of this.buffersForUploadingPending) {
       buffer.destroy();
     }
@@ -226,6 +316,9 @@ class GpuDataManagerImpl implements GpuDataManager {
     }
   }
 }
-
-export const createGpuDataManager = (...args: ConstructorParameters<typeof GpuDataManagerImpl>): GpuDataManager =>
-    new GpuDataManagerImpl(...args);
+/**
+ *
+ * @param  {ConstructorParameters<typeof GpuDataManagerImpl>} args
+ * @returns {GpuDataManager}
+ */
+export const createGpuDataManager = (...args) => new GpuDataManagerImpl(...args);

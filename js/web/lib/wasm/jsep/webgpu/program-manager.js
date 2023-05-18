@@ -1,11 +1,15 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {WebGpuBackend} from '../backend-webgpu';
-import {LOG_DEBUG} from '../log';
+import {WebGpuBackend} from '../backend-webgpu.js';
+import {LOG_DEBUG} from '../log.js';
 
-import {createShaderHelper} from './ops/common';
-import {Artifact, GpuData, ProgramInfo} from './types';
+import {createShaderHelper} from './ops/common.js';
+import {
+  // Artifact,
+  // GpuData,
+  // ProgramInfo
+} from './types.js';
 
 /**
  * ProgramManager is the main class behind running computations
@@ -17,20 +21,54 @@ import {Artifact, GpuData, ProgramInfo} from './types';
  * corresponding Location's in the binary program
  */
 export class ProgramManager {
-  repo: Map<unknown, Artifact>;  // this should be per-session object
-  attributesBound: boolean;
-
-  constructor(private backend: WebGpuBackend) {
+  /**
+   * @type {Map<unknown, Artifact>}
+   */
+  repo;  // this should be per-session object
+  /**
+   * @type {boolean}
+   */
+  attributesBound;
+  /**
+   * @type {WebGpuBackend}
+   * @private
+   */
+  backend;
+  /**
+   *
+   * @param {WebGpuBackend} backend
+   */
+  constructor(backend) {
+    this.backend = backend;
     this.repo = new Map();
     this.attributesBound = false;
   }
-  getArtifact(key: unknown): Artifact|undefined {
+  /**
+   *
+   * @param {unknown} key
+   * @returns {Artifact|undefined}
+   */
+  getArtifact(key) {
     return this.repo.get(key);
   }
-  setArtifact(key: unknown, artifact: Artifact): void {
+  /**
+   *
+   * @param {unknown} key
+   * @param {Artifact} artifact
+   * @returns {void}
+   */
+  setArtifact(key, artifact) {
     this.repo.set(key, artifact);
   }
-  run(buildArtifact: Artifact, inputs: GpuData[], outputs: GpuData[], dispatchGroup: [number, number, number]): void {
+  /**
+   *
+   * @param {Artifact} buildArtifact
+   * @param {GpuData[]} inputs
+   * @param {GpuData[]} outputs
+   * @param {[number, number, number]} dispatchGroup
+   * @returns {void}
+   */
+  run(buildArtifact, inputs, outputs, dispatchGroup) {
     const device = this.backend.device;
     const computePassEncoder = this.backend.getComputePassEncoder();
 
@@ -38,7 +76,7 @@ export class ProgramManager {
       // profiling write start timestamp
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (computePassEncoder as any).writeTimestamp(this.backend.profilingQuerySet, 0);
+      (computePassEncoder /*as any*/).writeTimestamp(this.backend.profilingQuerySet, 0);
     }
 
     computePassEncoder.setPipeline(buildArtifact.computePipeline);
@@ -60,7 +98,7 @@ export class ProgramManager {
       // profiling write end timestamp
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (computePassEncoder as any).writeTimestamp(this.backend.profilingQuerySet, 1);
+      (computePassEncoder /*as any*/).writeTimestamp(this.backend.profilingQuerySet, 1);
       // eslint-disable-next-line no-bitwise
       const queryData = this.backend.gpuDataManager.create(16, GPUBufferUsage.COPY_SRC | GPUBufferUsage.QUERY_RESOLVE);
       // eslint-disable-next-line no-bitwise
@@ -71,8 +109,8 @@ export class ProgramManager {
       this.backend.getCommandEncoder().copyBufferToBuffer(queryData.buffer, 0, syncData.buffer, 0, 16);
       this.backend.flush();
 
-      const kernelId = this.backend.currentKernelId!;
-      const kernelName = this.backend.kernels.get(kernelId)![0];
+      const kernelId = this.backend.currentKernelId/*!*/;
+      const kernelName = this.backend.kernels.get(kernelId)/*!*/[0];
 
       syncData.buffer.mapAsync(GPUMapMode.READ).then(() => {
         const mappedData = new BigUint64Array(syncData.buffer.getMappedRange());
@@ -104,10 +142,19 @@ export class ProgramManager {
       this.backend.flush();
     }
   }
-  dispose(): void {
+  /**
+   * @returns {void}
+   */
+  dispose() {
     // this.repo.forEach(a => this.glContext.deleteProgram(a.program));
   }
-  build(programInfo: ProgramInfo, normalizedDispatchGroupSize: [number, number, number]): Artifact {
+  /**
+   *
+   * @param {ProgramInfo} programInfo
+   * @param {[number, number, number]} normalizedDispatchGroupSize
+   * @returns {Artifact}
+   */
+  build(programInfo, normalizedDispatchGroupSize) {
     const device = this.backend.device;
 
     const code = programInfo.getShaderSource(createShaderHelper(normalizedDispatchGroupSize));
@@ -119,8 +166,12 @@ export class ProgramManager {
 
     return {programInfo, computePipeline};
   }
-
-  normalizeDispatchGroupSize(dispatchGroup: ReturnType<ProgramInfo['dispatchGroup']>): [number, number, number] {
+  /**
+   *
+   * @param {ReturnType<ProgramInfo['dispatchGroup']>} dispatchGroup
+   * @returns {[number, number, number]}
+   */
+  normalizeDispatchGroupSize(dispatchGroup) {
     const x = typeof dispatchGroup === 'number' ? dispatchGroup : dispatchGroup.x;
     const y = typeof dispatchGroup === 'number' ? 1 : (dispatchGroup.y || 1);
     const z = typeof dispatchGroup === 'number' ? 1 : (dispatchGroup.z || 1);
