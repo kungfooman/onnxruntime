@@ -2,7 +2,9 @@
 // Licensed under the MIT License.
 
 import {readFile} from 'fs';
-import {env, InferenceSession, SessionHandler, Tensor} from 'onnxruntime-common';
+import {env, InferenceSession,
+  //SessionHandler,
+  Tensor} from 'onnxruntime-common';
 import {promisify} from 'util';
 
 //import {SerializableModeldata} from './proxy-messages.js';

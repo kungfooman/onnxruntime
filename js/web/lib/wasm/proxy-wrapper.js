@@ -1,7 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {Env, env, InferenceSession} from 'onnxruntime-common';
+import {
+  //Env,
+  env, InferenceSession} from 'onnxruntime-common';
 
 //import {OrtWasmMessage, SerializableModeldata, SerializableSessionMetadata, SerializableTensor} from './proxy-messages.js';
 import * as core from './wasm-core-impl.js';

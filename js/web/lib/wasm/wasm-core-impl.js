@@ -1,7 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {Env, InferenceSession, Tensor} from 'onnxruntime-common';
+import {
+  //Env,
+  InferenceSession, Tensor} from 'onnxruntime-common';
 
 import {init as initJsep} from './jsep/init.js';
 //import {SerializableModeldata, SerializableSessionMetadata, SerializableTensor} from './proxy-messages.js';

@@ -5,10 +5,20 @@
   }
   const imports = {
     "onnxruntime-common": "./common/lib/index.js",
-    "fs": importFile("export default {};"),
-    "os": importFile("export default {};"),
+    "fs": importFile(`
+      export function readFile() {
+        throw 'not implemented'
+      };
+      export default {};
+    `),
+    "os": importFile(`
+      export function cpus() {
+        throw "not implemented";
+      }
+      export default {};
+    `),
     "path": importFile("export default {};"),
-    "util": importFile("export default {};"),
+    "util": importFile("export function promisify() {throw 'not implemented'}; export default {};"),
   };
   const importmap = document.createElement("script");
   importmap.type = "importmap";
