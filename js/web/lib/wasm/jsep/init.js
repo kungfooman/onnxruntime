@@ -1,29 +1,71 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {Env} from 'onnxruntime-common';
+//import {Env} from 'onnxruntime-common';
 
-import {OrtWasmModule} from '../binding/ort-wasm';
-import {getTensorElementSize} from '../wasm-common';
+//import {OrtWasmModule} from '../binding/ort-wasm.js';
+import {getTensorElementSize} from '../wasm-common.js';
 
-import {WebGpuBackend} from './backend-webgpu';
-import {LOG_DEBUG} from './log';
-import {TensorView} from './tensor';
-import {ShapeUtil} from './util';
-import {ComputeContext, ComputeContextInputsOutputsMapping, ProgramInfo, ProgramInfoLoader} from './webgpu/types';
+import {WebGpuBackend} from './backend-webgpu.js';
+import {LOG_DEBUG} from './log.js';
+//import {TensorView} from './tensor.js';
+import {ShapeUtil} from './util.js';
+import {
+  //ComputeContext,
+  //ComputeContextInputsOutputsMapping,
+  //ProgramInfo,
+  //ProgramInfoLoader
+} from './webgpu/types.js';
 
 /* eslint-disable no-bitwise */
-
-class TensorViewImpl implements TensorView {
-  constructor(
-      private module: OrtWasmModule, public readonly dataType: number, public readonly data: number,
-      public readonly dims: readonly number[]) {}
-
-  getFloat32Array(): Float32Array {
+/**
+ * @implements {TensorView}
+ */
+class TensorViewImpl {
+  /**
+   * @type {OrtWasmModule}
+   * @private
+   */
+  module;
+  /**
+   * @readonly
+   * @type {number}
+   */
+  dataType;
+  /**
+   * @readonly
+   * @type {number}
+   */
+  data;
+  /**
+   * @readonly
+   * @type {readonly number[]}
+   */
+  dims;
+  /**
+   *
+   * @param {OrtWasmModule} module
+   * @param {number} dataType
+   * @param {*} data
+   * @param {*} dims
+   */
+  constructor(module, dataType, data, dims) {
+    this.module = module;
+    this.dataType = dataType;
+    this.data = data;
+    this.dims = dims;
+  }
+  /**
+   * @returns {Float32Array}
+   */
+  getFloat32Array() {
     return new Float32Array(this.module.HEAP8.buffer, this.data, ShapeUtil.size(this.dims));
   }
-
-  reshape(newDims: readonly number[]): TensorView {
+  /**
+   * @param {readonly number[]} newDims
+   * @returns {TensorView}
+   */
+  reshape(newDims) {
     if (ShapeUtil.size(newDims) !== ShapeUtil.size(this.dims)) {
       throw new Error('Invalid new shape');
     }
@@ -31,26 +73,59 @@ class TensorViewImpl implements TensorView {
   }
 }
 
-class ComputeContextImpl implements ComputeContext {
-  readonly opKernelContext: number;
-  readonly inputs: readonly TensorView[];
-  get customData(): {[key: string]: unknown} {
+/**
+ * @implements {ComputeContext}
+ */
+class ComputeContextImpl {
+  /**
+   * @readonly
+   * @type {number}
+   */
+  opKernelContext;
+  /**
+   * @readonly
+   * @type {readonly TensorView[]}
+   */
+  inputs;
+  /**
+   * @type {{[key: string]: unknown}}
+   */
+  get customData() {
     return this.backend.currentKernelCustomData;
   }
-  constructor(private module: OrtWasmModule, private backend: WebGpuBackend, contextDataOffset: number) {
+  /**
+   * @private
+   * @type {OrtWasmModule}
+   */
+  module;
+  /**
+   * @private
+   * @type {WebGpuBackend}
+   */
+  backend;
+  /**
+   *
+   * @param {OrtWasmModule} module
+   * @param {WebGpuBackend} backend
+   * @param {number} contextDataOffset
+   */
+  constructor(module, backend, contextDataOffset) {
+    this.module = module;
+    this.backend = backend;
     const heapU32 = module.HEAPU32;
 
     // extract context data
     let dataIndex = (contextDataOffset >> 2);
     this.opKernelContext = heapU32[dataIndex++];
     const inputCount = heapU32[dataIndex++];
-
-    const inputs: TensorView[] = [];
+    /** @type {TensorView[]} */
+    const inputs = [];
     for (let i = 0; i < inputCount; i++) {
       const dataType = heapU32[dataIndex++];
       const data = heapU32[dataIndex++];
       const dim = heapU32[dataIndex++];
-      const dims: number[] = [];
+      /** @type {number[]} */
+      const dims = [];
       for (let d = 0; d < dim; d++) {
         dims.push(heapU32[dataIndex++]);
       }
@@ -58,17 +133,34 @@ class ComputeContextImpl implements ComputeContext {
     }
     this.inputs = inputs;
   }
-
-  compute(program: ProgramInfoLoader|ProgramInfo, inputsOutputsMapping?: ComputeContextInputsOutputsMapping):
-      TensorView[] {
+  /**
+   *
+   * @param {ProgramInfoLoader|ProgramInfo} program
+   * @param {ComputeContextInputsOutputsMapping} [inputsOutputsMapping]
+   * @returns {TensorView[]}
+   */
+  compute(program, inputsOutputsMapping) {
     // prepare inputs. inputs should always be valid data.
     const mappedInputs =
         inputsOutputsMapping?.inputs?.map(i => typeof i === 'number' ? this.inputs[i] : i) ?? this.inputs;
     // prepare outputs.
     const outputIndices = inputsOutputsMapping?.outputs ?? [];
-    const createKernelOutput = (index: number, dataType: number, dims: readonly number[]): TensorView =>
+    /**
+     *
+     * @param {number} index
+     * @param {number} dataType
+     * @param {readonly number[]} dims
+     * @returns {TensorView}
+     */
+    const createKernelOutput = (index, dataType, dims) =>
         new TensorViewImpl(this.module, dataType, this.output(index, dims), dims);
-    const createTemporaryOutput = (dataType: number, dims: readonly number[]): TensorView => {
+    /**
+     *
+     * @param {number} dataType
+     * @param {readonly number[]} dims
+     * @returns {TensorView}
+     */
+    const createTemporaryOutput = (dataType, dims) => {
       const elementSize = getTensorElementSize(dataType);
       if (!elementSize) {
         throw new Error(`Unsupported data type: ${dataType}`);
@@ -78,8 +170,13 @@ class ComputeContextImpl implements ComputeContext {
     };
     return this.backend.run(program, mappedInputs, outputIndices, createKernelOutput, createTemporaryOutput);
   }
-
-  output(index: number, dims: readonly number[]): number {
+  /**
+   *
+   * @param {number} index
+   * @param {readonly number[]} dims
+   * @returns {number}
+   */
+  output(index, dims) {
     const stack = this.module.stackSave();
     try {
       const data = this.module.stackAlloc((1 + dims.length) * 4 /* sizeof(size_t) */);
@@ -94,8 +191,13 @@ class ComputeContextImpl implements ComputeContext {
     }
   }
 }
-
-export const init = async(module: OrtWasmModule, env: Env): Promise<void> => {
+/**
+ *
+ * @param {OrtWasmModule} module
+ * @param {Env} env
+ * @returns {Promise<void>}
+ */
+export const init = async(module, env) => {
   const init = module.jsepInit;
   if (init && navigator.gpu) {
     if (!env.wasm.simd) {
@@ -108,15 +210,26 @@ export const init = async(module: OrtWasmModule, env: Env): Promise<void> => {
     init(
         // backend
         {backend},
-
-        // jsepAlloc()
-        (size: number) => backend.alloc(size),
-
-        // jsepFree()
-        (ptr: number) => backend.free(ptr),
-
-        // jsepCopy(src, dst, size, isSourceGpu)
-        (src: number, dst: number, size: number, isSourceGpu = false) => {
+        /**
+         * jsepAlloc()
+         * @param {number} size
+         * @returns {number}
+         */
+        (size) => backend.alloc(size),
+        /**
+         * jsepFree()
+         * @param {number} ptr
+         * @returns {number}
+         */
+        (ptr) => backend.free(ptr),
+        /**
+         * jsepCopy(src, dst, size, isSourceGpu)
+         * @param {number} src
+         * @param {number} dst
+         * @param {number} size
+         * @param {boolean} isSourceGpu
+         */
+        (src/*: */, dst/*: */, size/*: */, isSourceGpu = false) => {
           if (isSourceGpu) {
             LOG_DEBUG('verbose', () => `[WebGPU] jsepCopyGpuToGpu: src=${src}, dst=${dst}, size=${size}`);
             backend.memcpy(src, dst);
@@ -126,25 +239,40 @@ export const init = async(module: OrtWasmModule, env: Env): Promise<void> => {
             backend.upload(dst, data);
           }
         },
-
-        // jsepCopyAsync(src, dst, size)
-        async(gpuDataId: number, dataOffset: number, size: number):
-            Promise<void> => {
-              LOG_DEBUG(
-                  'verbose',
-                  () => `[WebGPU] jsepCopyGpuToCpu: gpuDataId=${gpuDataId}, dataOffset=${dataOffset}, size=${size}`);
-
-              await backend.download(gpuDataId, () => module.HEAPU8.subarray(dataOffset, dataOffset + size));
-            },
-
-        // jsepCreateKernel
-        (name: string, kernel: number, attribute: unknown) => backend.createKernel(name, kernel, attribute),
-
-        // jsepReleaseKernel
-        (kernel: number) => backend.releaseKernel(kernel),
-
-        // jsepRun
-        (kernel: number, contextDataOffset: number) => {
+        /**
+         * jsepCopyAsync(src, dst, size)
+         * @param {number} gpuDataId
+         * @param {number} dataOffset
+         * @param {number} size
+         * @returns {Promise<void>}
+         */
+        async(gpuDataId, dataOffset, size) => {
+          LOG_DEBUG(
+            'verbose',
+            () => `[WebGPU] jsepCopyGpuToCpu: gpuDataId=${gpuDataId}, dataOffset=${dataOffset}, size=${size}`
+          );
+          await backend.download(gpuDataId, () => module.HEAPU8.subarray(dataOffset, dataOffset + size));
+        },
+        /**
+         * jsepCreateKernel
+         * @param {string} name
+         * @param {number} kernel
+         * @param {unknown} attribute
+         */
+        (name, kernel, attribute) => backend.createKernel(name, kernel, attribute),
+        /**
+         * jsepReleaseKernel
+         * @param {number} kernel
+         * @returns {void}
+         */
+        (kernel) => backend.releaseKernel(kernel),
+        /**
+         * jsepRun
+         * @param {number} kernel
+         * @param {number} contextDataOffset
+         * @returns {number}
+         */
+        (kernel, contextDataOffset) => {
           LOG_DEBUG('verbose', () => `[WebGPU] jsepRun: kernel=${kernel}, contextDataOffset=${contextDataOffset}`);
           const context = new ComputeContextImpl(module, backend, contextDataOffset);
           return backend.computeKernel(kernel, context);

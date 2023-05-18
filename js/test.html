@@ -6,6 +6,9 @@
   const imports = {
     "onnxruntime-common": "./common/lib/index.js",
     "fs": importFile("export default {};"),
+    "os": importFile("export default {};"),
+    "path": importFile("export default {};"),
+    "util": importFile("export default {};"),
   };
   const importmap = document.createElement("script");
   importmap.type = "importmap";
@@ -17,6 +20,16 @@
     <script src="./js/web/dist/ort-common.js"></script>
     <script src="./js/web/dist/ort-web.js"></script>
 -->
+<script>
+  const BUILD_DEFS = {
+    DISABLE_WEBGL: false,
+    DISABLE_WEBGPU: true,
+    DISABLE_WASM: false,
+    DISABLE_WASM_PROXY: false,
+    DISABLE_WASM_THREAD: false,
+  };
+  globalThis.BUILD_DEFS = BUILD_DEFS;
+</script>
 <script type="module">
     import * as common from "onnxruntime-common";
     import * as transpose from "./web/lib/wasm/jsep/webgpu/ops/transpose.js";
@@ -30,7 +43,10 @@
     import * as opResolveRules from "./web/lib/wasm/jsep/webgpu/op-resolve-rules.js";
     import * as gpuDataManager from "./web/lib/wasm/jsep/webgpu/gpu-data-manager.js";
     import * as backendWebGPU from "./web/lib/wasm/jsep/backend-webgpu.js";
-    const tensor = new common.Tensor("float32", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], [3, 4])
+    import * as jsepInit from "./web/lib/wasm/jsep/init.js";
+    import * as libIndex from "./web/lib/index.js";
+    import * as backendWasm from "./web/lib/backend-wasm.js";
+    const tensor = new common.Tensor("float32", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], [3, 4]);
     Object.assign(window, {
         common,
         tensor,
@@ -45,6 +61,9 @@
         opResolveRules,
         gpuDataManager,
         ...backendWebGPU,
+        jsepInit,
+        libIndex,
+        backendWasm,
     });
     const webGpuBackend = new WebGpuBackend();
     webGpuBackend.initialize(common.env);

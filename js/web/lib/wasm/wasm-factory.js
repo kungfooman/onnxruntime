@@ -1,28 +1,31 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-import {Env} from 'onnxruntime-common';
+//import {Env} from 'onnxruntime-common';
 import * as path from 'path';
 
-import {OrtWasmModule} from './binding/ort-wasm';
-import {OrtWasmThreadedModule} from './binding/ort-wasm-threaded';
+import {OrtWasmModule} from './binding/ort-wasm.js';
+import {OrtWasmThreadedModule} from './binding/ort-wasm-threaded.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const ortWasmFactory: EmscriptenModuleFactory<OrtWasmModule> =
+/** @type {EmscriptenModuleFactory<OrtWasmModule>} */
+const ortWasmFactory =
     BUILD_DEFS.DISABLE_WEBGPU ? require('./binding/ort-wasm.js') : require('./binding/ort-wasm-simd.jsep.js');
-
-const ortWasmFactoryThreaded: EmscriptenModuleFactory<OrtWasmModule> = !BUILD_DEFS.DISABLE_WASM_THREAD ?
+/** @type {EmscriptenModuleFactory<OrtWasmModule>} */
+const ortWasmFactoryThreaded = !BUILD_DEFS.DISABLE_WASM_THREAD ?
     (BUILD_DEFS.DISABLE_WEBGPU ? require('./binding/ort-wasm-threaded.js') :
                                  require('./binding/ort-wasm-simd-threaded.jsep.js')) :
     ortWasmFactory;
 /* eslint-enable @typescript-eslint/no-require-imports */
-
-let wasm: OrtWasmModule|undefined;
+/** @type {OrtWasmModule|undefined} */
+let wasm;
 let initialized = false;
 let initializing = false;
 let aborted = false;
-
-const isMultiThreadSupported = (): boolean => {
+/**
+ * @returns {boolean}
+ */
+const isMultiThreadSupported = () => {
   try {
     // If 'SharedArrayBuffer' is not available, WebAssembly threads will not work.
     if (typeof SharedArrayBuffer === 'undefined') {
@@ -45,8 +48,10 @@ const isMultiThreadSupported = (): boolean => {
     return false;
   }
 };
-
-const isSimdSupported = (): boolean => {
+/**
+ * @returns {boolean}
+ */
+const isSimdSupported = () => {
   try {
     // Test for WebAssembly SIMD capability (for both browsers and Node.js)
     // This typed array is a WebAssembly program containing SIMD instructions.
@@ -70,16 +75,24 @@ const isSimdSupported = (): boolean => {
     return false;
   }
 };
-
-const getWasmFileName = (useSimd: boolean, useThreads: boolean) => {
+/**
+ *
+ * @param {boolean} useSimd
+ * @param {boolean} useThreads
+ * @returns {string}
+ */
+const getWasmFileName = (useSimd, useThreads) => {
   if (useThreads) {
     return useSimd ? 'ort-wasm-simd-threaded.wasm' : 'ort-wasm-threaded.wasm';
   } else {
     return useSimd ? 'ort-wasm-simd.wasm' : 'ort-wasm.wasm';
   }
 };
-
-export const initializeWebAssembly = async(flags: Env.WebAssemblyFlags): Promise<void> => {
+/**
+ * @param {Env.WebAssemblyFlags} flags
+ * @returns {Promise<void>}
+ */
+export const initializeWebAssembly = async(flags) => {
   if (initialized) {
     return Promise.resolve();
   }
@@ -93,9 +106,9 @@ export const initializeWebAssembly = async(flags: Env.WebAssemblyFlags): Promise
   initializing = true;
 
   // wasm flags are already initialized
-  const timeout = flags.initTimeout!;
-  const numThreads = flags.numThreads!;
-  const simd = flags.simd!;
+  const timeout = flags.initTimeout/*!*/;
+  const numThreads = flags.numThreads/*!*/;
+  const simd = flags.simd/*!*/;
 
   const useThreads = numThreads > 1 && isMultiThreadSupported();
   const useSimd = simd && isSimdSupported();
@@ -106,8 +119,8 @@ export const initializeWebAssembly = async(flags: Env.WebAssemblyFlags): Promise
   const wasmPathOverride = typeof wasmPaths === 'object' ? wasmPaths[wasmFileName] : undefined;
 
   let isTimeout = false;
-
-  const tasks: Array<Promise<void>> = [];
+  /** @type {Array<Promise<void>>} */
+  const tasks = [];
 
   // promise for timeout
   if (timeout > 0) {
@@ -122,8 +135,15 @@ export const initializeWebAssembly = async(flags: Env.WebAssemblyFlags): Promise
   // promise for module initialization
   tasks.push(new Promise((resolve, reject) => {
     const factory = useThreads ? ortWasmFactoryThreaded : ortWasmFactory;
-    const config: Partial<OrtWasmModule> = {
-      locateFile: (fileName: string, scriptDirectory: string) => {
+    /** @type {Partial<OrtWasmModule>} */
+    const config = {
+      /**
+       *
+       * @param {string} fileName
+       * @param {string} scriptDirectory
+       * @returns
+       */
+      locateFile: (fileName, scriptDirectory) => {
         if (!BUILD_DEFS.DISABLE_WASM_THREAD && useThreads && fileName.endsWith('.worker.js') &&
             typeof Blob !== 'undefined') {
           return URL.createObjectURL(new Blob(
@@ -188,20 +208,25 @@ export const initializeWebAssembly = async(flags: Env.WebAssemblyFlags): Promise
     throw new Error(`WebAssembly backend initializing failed due to timeout: ${timeout}ms`);
   }
 };
-
-export const getInstance = (): OrtWasmModule => {
+/**
+ *
+ * @returns {OrtWasmModule}
+ */
+export const getInstance = () => {
   if (initialized && wasm) {
     return wasm;
   }
 
   throw new Error('WebAssembly is not initialized yet.');
 };
-
-export const dispose = (): void => {
+/**
+ * @returns {void}
+ */
+export const dispose = () => {
   if (initialized && !initializing && !aborted) {
     initializing = true;
 
-    (wasm as OrtWasmThreadedModule).PThread?.terminateAllThreads();
+    (wasm /*as OrtWasmThreadedModule*/).PThread?.terminateAllThreads();
     wasm = undefined;
 
     initializing = false;

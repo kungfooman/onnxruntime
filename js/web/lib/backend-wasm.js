@@ -4,16 +4,17 @@
 import {Backend, env, InferenceSession, SessionHandler} from 'onnxruntime-common';
 import {cpus} from 'os';
 
-import {initializeWebAssemblyInstance} from './wasm/proxy-wrapper';
-import {OnnxruntimeWebAssemblySessionHandler} from './wasm/session-handler';
+import {initializeWebAssemblyInstance} from './wasm/proxy-wrapper.js';
+import {OnnxruntimeWebAssemblySessionHandler} from './wasm/session-handler.js';
 
 /**
  * This function initializes all flags for WebAssembly.
  *
  * Those flags are accessible from `ort.env.wasm`. Users are allow to set those flags before the first inference session
  * being created, to override default value.
+ * @returns {void}
  */
-export const initializeFlags = (): void => {
+export const initializeFlags = () => {
   if (typeof env.wasm.initTimeout !== 'number' || env.wasm.initTimeout < 0) {
     env.wasm.initTimeout = 0;
   }
@@ -31,19 +32,29 @@ export const initializeFlags = (): void => {
     env.wasm.numThreads = Math.min(4, Math.ceil((numCpuLogicalCores || 1) / 2));
   }
 };
-
-class OnnxruntimeWebAssemblyBackend implements Backend {
-  async init(): Promise<void> {
+/**
+ * @implements {Backend}
+ */
+class OnnxruntimeWebAssemblyBackend {
+  /**
+   * @returns {Promise<void>}
+   */
+  async init() {
     // populate wasm flags
     initializeFlags();
 
     // init wasm
     await initializeWebAssemblyInstance();
   }
-  createSessionHandler(path: string, options?: InferenceSession.SessionOptions): Promise<SessionHandler>;
-  createSessionHandler(buffer: Uint8Array, options?: InferenceSession.SessionOptions): Promise<SessionHandler>;
-  async createSessionHandler(pathOrBuffer: string|Uint8Array, options?: InferenceSession.SessionOptions):
-      Promise<SessionHandler> {
+  //createSessionHandler(path: string, options?: InferenceSession.SessionOptions): Promise<SessionHandler>;
+  //createSessionHandler(buffer: Uint8Array, options?: InferenceSession.SessionOptions): Promise<SessionHandler>;
+  /**
+   *
+   * @param {string|Uint8Array} pathOrBuffer
+   * @param {InferenceSession.SessionOptions} [options]
+   * @returns {Promise<SessionHandler>}
+   */
+  async createSessionHandler(pathOrBuffer, options) {
     const handler = new OnnxruntimeWebAssemblySessionHandler();
     await handler.loadModel(pathOrBuffer, options);
     return Promise.resolve(handler);

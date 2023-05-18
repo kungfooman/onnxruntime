@@ -3,16 +3,21 @@
 
 import {InferenceSession} from 'onnxruntime-common';
 
-import {iterateExtraOptions} from './options-utils';
-import {allocWasmString} from './string-utils';
-import {getInstance} from './wasm-factory';
-
-export const setRunOptions = (options: InferenceSession.RunOptions): [number, number[]] => {
+import {iterateExtraOptions} from './options-utils.js';
+import {allocWasmString} from './string-utils.js';
+import {getInstance} from './wasm-factory.js';
+/**
+ *
+ * @param {InferenceSession.RunOptions} options
+ * @returns {[number, number[]]}
+ */
+export const setRunOptions = (options) => {
   const wasm = getInstance();
   let runOptionsHandle = 0;
-  const allocs: number[] = [];
-
-  const runOptions: InferenceSession.RunOptions = options || {};
+  /** @type {number[]} */
+  const allocs = [];
+  /** @type {InferenceSession.RunOptions} */
+  const runOptions = options || {};
 
   try {
     if (options?.logSeverityLevel === undefined) {
@@ -39,13 +44,13 @@ export const setRunOptions = (options: InferenceSession.RunOptions): [number, nu
     }
 
     runOptionsHandle = wasm._OrtCreateRunOptions(
-        runOptions.logSeverityLevel!, runOptions.logVerbosityLevel!, !!runOptions.terminate!, tagDataOffset);
+        runOptions.logSeverityLevel/*!*/, runOptions.logVerbosityLevel/*!*/, !!runOptions.terminate/*!*/, tagDataOffset);
     if (runOptionsHandle === 0) {
       throw new Error('Can\'t create run options');
     }
 
     if (options?.extra !== undefined) {
-      iterateExtraOptions(options.extra, '', new WeakSet<Record<string, unknown>>(), (key, value) => {
+      iterateExtraOptions(options.extra, '', new WeakSet/*<Record<string, unknown>>*/(), (key, value) => {
         const keyDataOffset = allocWasmString(key, allocs);
         const valueDataOffset = allocWasmString(value, allocs);
 

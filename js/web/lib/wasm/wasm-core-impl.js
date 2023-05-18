@@ -3,20 +3,21 @@
 
 import {Env, InferenceSession, Tensor} from 'onnxruntime-common';
 
-import {init as initJsep} from './jsep/init';
-import {SerializableModeldata, SerializableSessionMetadata, SerializableTensor} from './proxy-messages';
-import {setRunOptions} from './run-options';
-import {setSessionOptions} from './session-options';
-import {allocWasmString} from './string-utils';
-import {logLevelStringToEnum, tensorDataTypeEnumToString, tensorDataTypeStringToEnum, tensorTypeToTypedArrayConstructor} from './wasm-common';
-import {getInstance} from './wasm-factory';
+import {init as initJsep} from './jsep/init.js';
+//import {SerializableModeldata, SerializableSessionMetadata, SerializableTensor} from './proxy-messages.js';
+import {setRunOptions} from './run-options.js';
+import {setSessionOptions} from './session-options.js';
+import {allocWasmString} from './string-utils.js';
+import {logLevelStringToEnum, tensorDataTypeEnumToString, tensorDataTypeStringToEnum, tensorTypeToTypedArrayConstructor} from './wasm-common.js';
+import {getInstance} from './wasm-factory.js';
 
 /**
  * initialize ORT environment.
- * @param numThreads SetGlobalIntraOpNumThreads(numThreads)
- * @param loggingLevel CreateEnv(static_cast<OrtLoggingLevel>(logging_level))
+ * @param {number} numThreads SetGlobalIntraOpNumThreads(numThreads)
+ * @param {number} loggingLevel CreateEnv(static_cast<OrtLoggingLevel>(logging_level))
+ * @returns {Promise<void>}
  */
-const initOrt = async(numThreads: number, loggingLevel: number): Promise<void> => {
+const initOrt = async(numThreads, loggingLevel) => {
   const errorCode = getInstance()._OrtInit(numThreads, loggingLevel);
   if (errorCode !== 0) {
     throw new Error(`Can't initialize onnxruntime. error code = ${errorCode}`);
@@ -25,11 +26,12 @@ const initOrt = async(numThreads: number, loggingLevel: number): Promise<void> =
 
 /**
  * intialize runtime environment.
- * @param env passed in the environment config object.
+ * @param {Env} env passed in the environment config object.
+ * @returns {Promise<void>}
  */
-export const initRuntime = async(env: Env): Promise<void> => {
+export const initRuntime = async(env) => {
   // init ORT
-  await initOrt(env.wasm.numThreads!, logLevelStringToEnum(env.logLevel));
+  await initOrt(env.wasm.numThreads/*!*/, logLevelStringToEnum(env.logLevel));
 
   // init JSEP if available
   await initJsep(getInstance(), env);
@@ -38,28 +40,34 @@ export const initRuntime = async(env: Env): Promise<void> => {
 /**
  *  tuple elements are: InferenceSession ID; inputNamesUTF8Encoded; outputNamesUTF8Encoded
  */
-type SessionMetadata = [number, number[], number[]];
-
-const activeSessions = new Map<number, SessionMetadata>();
+/** @typedef {[number, number[], number[]]} SessionMetadata */
+/** @type {Map<number, SessionMetadata>} */
+const activeSessions = new Map();
 
 /**
  * create an instance of InferenceSession.
- * @returns the metadata of InferenceSession. 0-value handle for failure.
+ * @param {Uint8Array} model
+ * @returns {[number, number]} the metadata of InferenceSession. 0-value handle for failure.
  */
-export const createSessionAllocate = (model: Uint8Array): [number, number] => {
+export const createSessionAllocate = (model) => {
   const wasm = getInstance();
   const modelDataOffset = wasm._malloc(model.byteLength);
   wasm.HEAPU8.set(model, modelDataOffset);
   return [modelDataOffset, model.byteLength];
 };
-
+/**
+ * @param {SerializableModeldata} modelData
+ * @param {InferenceSession.SessionOptions} [options]
+ * @returns {SerializableSessionMetadata}
+ */
 export const createSessionFinalize =
-    (modelData: SerializableModeldata, options?: InferenceSession.SessionOptions): SerializableSessionMetadata => {
+    (modelData, options) => {
       const wasm = getInstance();
 
       let sessionHandle = 0;
       let sessionOptionsHandle = 0;
-      let allocs: number[] = [];
+      /** @type {number[]} */
+      let allocs = [];
 
       try {
         [sessionOptionsHandle, allocs] = setSessionOptions(options);
@@ -107,15 +115,20 @@ export const createSessionFinalize =
 
 /**
  * create an instance of InferenceSession.
- * @returns the metadata of InferenceSession. 0-value handle for failure.
+ * @param {Uint8Array} model
+ * @param {InferenceSession.SessionOptions} [options]
+ * @returns {SerializableSessionMetadata} the metadata of InferenceSession. 0-value handle for failure.
  */
-export const createSession =
-    (model: Uint8Array, options?: InferenceSession.SessionOptions): SerializableSessionMetadata => {
-      const modelData: SerializableModeldata = createSessionAllocate(model);
-      return createSessionFinalize(modelData, options);
-    };
-
-export const releaseSession = (sessionId: number): void => {
+export const createSession = (model, options) => {
+  /** @type {SerializableModeldata} */
+  const modelData = createSessionAllocate(model);
+  return createSessionFinalize(modelData, options);
+};
+/**
+ * @param {number} sessionId
+ * @returns {void}
+ */
+export const releaseSession = (sessionId) => {
   const wasm = getInstance();
   const session = activeSessions.get(sessionId);
   if (!session) {
@@ -133,10 +146,15 @@ export const releaseSession = (sessionId: number): void => {
 
 /**
  * perform inference run
+ *
+ * @param {number} sessionId
+ * @param {number[]} inputIndices
+ * @param {SerializableTensor[]} inputs
+ * @param {number[]} outputIndices
+ * @param {InferenceSession.RunOptions} options
+ * @returns {Promise<SerializableTensor[]>}
  */
-export const run = async(
-    sessionId: number, inputIndices: number[], inputs: SerializableTensor[], outputIndices: number[],
-    options: InferenceSession.RunOptions): Promise<SerializableTensor[]> => {
+export const run = async(sessionId, inputIndices, inputs, outputIndices, options) => {
   const wasm = getInstance();
   const session = activeSessions.get(sessionId);
   if (!session) {
@@ -150,10 +168,12 @@ export const run = async(
   const outputCount = outputIndices.length;
 
   let runOptionsHandle = 0;
-  let runOptionsAllocs: number[] = [];
-
-  const inputValues: number[] = [];
-  const inputAllocs: number[] = [];
+  /** @type {number[]} */
+  let runOptionsAllocs = [];
+  /** @type {number[]} */
+  const inputValues = [];
+  /** @type {number[]} */
+  const inputAllocs = [];
 
   try {
     [runOptionsHandle, runOptionsAllocs] = setRunOptions(options);
@@ -164,8 +184,10 @@ export const run = async(
       const dims = inputs[i][1];
       const data = inputs[i][2];
 
-      let dataOffset: number;
-      let dataByteLength: number;
+      /** @type {number} */
+      let dataOffset;
+      /** @type {number} */
+      let dataByteLength;
 
       if (Array.isArray(data)) {
         // string tensor
@@ -232,8 +254,8 @@ export const run = async(
       if (runPromise && typeof runPromise.then !== 'undefined') {
         errorCode = await runPromise;
       }
-
-      const output: SerializableTensor[] = [];
+      /** @type {SerializableTensor[]} */
+      const output = [];
 
       if (errorCode === 0) {
         for (let i = 0; i < outputCount; i++) {
@@ -242,8 +264,9 @@ export const run = async(
           const beforeGetTensorDataStack = wasm.stackSave();
           // stack allocate 4 pointer value
           const tensorDataOffset = wasm.stackAlloc(4 * 4);
-
-          let type: Tensor.Type|undefined, dataOffset = 0;
+          /** @type {Tensor.Type|undefined} */
+          let type;
+          let dataOffset = 0;
           try {
             errorCode = wasm._OrtGetTensorData(
                 tensor, tensorDataOffset, tensorDataOffset + 4, tensorDataOffset + 8, tensorDataOffset + 12);
@@ -264,7 +287,8 @@ export const run = async(
             const size = dims.length === 0 ? 1 : dims.reduce((a, b) => a * b);
             type = tensorDataTypeEnumToString(dataType);
             if (type === 'string') {
-              const stringData: string[] = [];
+              /** @type {string[]} */
+              const stringData = [];
               let dataIndex = dataOffset / 4;
               for (let i = 0; i < size; i++) {
                 const offset = wasm.HEAPU32[dataIndex++];
@@ -308,8 +332,10 @@ export const run = async(
 
 /**
  * end profiling
+ * @param {number} sessionId
+ * @returns {void}
  */
-export const endProfiling = (sessionId: number): void => {
+export const endProfiling = (sessionId) => {
   const wasm = getInstance();
   const session = activeSessions.get(sessionId);
   if (!session) {
@@ -324,9 +350,13 @@ export const endProfiling = (sessionId: number): void => {
   }
   wasm._OrtFree(profileFileName);
 };
-
-export const extractTransferableBuffers = (tensors: readonly SerializableTensor[]): ArrayBufferLike[] => {
-  const buffers: ArrayBufferLike[] = [];
+/**
+ * @param {readonly SerializableTensor[]} tensors
+ * @returns {ArrayBufferLike[]}
+ */
+export const extractTransferableBuffers = (tensors) => {
+  /** @type {ArrayBufferLike[]} */
+  const buffers = [];
   for (const tensor of tensors) {
     const data = tensor[2];
     if (!Array.isArray(data) && data.buffer) {

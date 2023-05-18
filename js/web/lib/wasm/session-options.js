@@ -3,11 +3,15 @@
 
 import {InferenceSession} from 'onnxruntime-common';
 
-import {iterateExtraOptions} from './options-utils';
-import {allocWasmString} from './string-utils';
-import {getInstance} from './wasm-factory';
-
-const getGraphOptimzationLevel = (graphOptimizationLevel: string|unknown): number => {
+import {iterateExtraOptions} from './options-utils.js';
+import {allocWasmString} from './string-utils.js';
+import {getInstance} from './wasm-factory.js';
+/**
+ *
+ * @param {string|unknown} graphOptimizationLevel
+ * @returns {number}
+ */
+const getGraphOptimzationLevel = (graphOptimizationLevel) => {
   switch (graphOptimizationLevel) {
     case 'disabled':
       return 0;
@@ -21,8 +25,12 @@ const getGraphOptimzationLevel = (graphOptimizationLevel: string|unknown): numbe
       throw new Error(`unsupported graph optimization level: ${graphOptimizationLevel}`);
   }
 };
-
-const getExecutionMode = (executionMode: 'sequential'|'parallel'): number => {
+/**
+ * @throws {Error}
+ * @param {'sequential'|'parallel'} executionMode
+ * @returns {0|1}
+ */
+const getExecutionMode = (executionMode) => {
   switch (executionMode) {
     case 'sequential':
       return 0;
@@ -32,15 +40,19 @@ const getExecutionMode = (executionMode: 'sequential'|'parallel'): number => {
       throw new Error(`unsupported execution mode: ${executionMode}`);
   }
 };
-
-const appendDefaultOptions = (options: InferenceSession.SessionOptions): void => {
+/**
+ *
+ * @param {InferenceSession.SessionOptions} options
+ * @returns {void}
+ */
+const appendDefaultOptions = (options) => {
   if (!options.extra) {
     options.extra = {};
   }
   if (!options.extra.session) {
     options.extra.session = {};
   }
-  const session = options.extra.session as Record<string, string>;
+  const session = options.extra.session /*as Record<string, string>*/;
   if (!session.use_ort_model_bytes_directly) {
     // eslint-disable-next-line camelcase
     session.use_ort_model_bytes_directly = '1';
@@ -53,9 +65,14 @@ const appendDefaultOptions = (options: InferenceSession.SessionOptions): void =>
   }
 };
 
-const setExecutionProviders =
-    (sessionOptionsHandle: number, executionProviders: readonly InferenceSession.ExecutionProviderConfig[],
-     allocs: number[]): void => {
+/**
+ *
+ * @param {number} sessionOptionsHandle
+ * @param {readonly InferenceSession.ExecutionProviderConfig[]} executionProviders
+ * @param {number[]} allocs
+ * @returns {void}
+ */
+const setExecutionProviders = (sessionOptionsHandle, executionProviders, allocs) => {
       for (const ep of executionProviders) {
         let epName = typeof ep === 'string' ? ep : ep.name;
 
@@ -67,7 +84,7 @@ const setExecutionProviders =
           case 'webnn':
             epName = 'WEBNN';
             if (typeof ep !== 'string') {
-              const webnnOptions = ep as InferenceSession.WebNNExecutionProviderOption;
+              const webnnOptions = ep /*as InferenceSession.WebNNExecutionProviderOption*/;
               if (webnnOptions?.deviceType) {
                 const keyDataOffset = allocWasmString('deviceType', allocs);
                 const valueDataOffset = allocWasmString(webnnOptions.deviceType, allocs);
@@ -103,13 +120,18 @@ const setExecutionProviders =
         }
       }
     };
-
-export const setSessionOptions = (options?: InferenceSession.SessionOptions): [number, number[]] => {
+/**
+ *
+ * @param {InferenceSession.SessionOptions} [options]
+ * @returns {[number, number[]]}
+ */
+export const setSessionOptions = (options) => {
   const wasm = getInstance();
   let sessionOptionsHandle = 0;
-  const allocs: number[] = [];
-
-  const sessionOptions: InferenceSession.SessionOptions = options || {};
+  /** @type {number[]} */
+  const allocs = [];
+  /** @type {InferenceSession.SessionOptions} */
+  const sessionOptions = options || {};
   appendDefaultOptions(sessionOptions);
 
   try {
@@ -145,7 +167,7 @@ export const setSessionOptions = (options?: InferenceSession.SessionOptions): [n
     }
 
     if (sessionOptions.extra !== undefined) {
-      iterateExtraOptions(sessionOptions.extra, '', new WeakSet<Record<string, unknown>>(), (key, value) => {
+      iterateExtraOptions(sessionOptions.extra, '', new WeakSet/*<Record<string, unknown>>*/(), (key, value) => {
         const keyDataOffset = allocWasmString(key, allocs);
         const valueDataOffset = allocWasmString(value, allocs);
 
