@@ -88,3 +88,4 @@ else if (typeof define === 'function' && define['amd'])
   define([], function() { return ortWasmThreaded; });
 else if (typeof exports === 'object')
   exports["ortWasmThreaded"] = ortWasmThreaded;
+export default ortWasmThreaded;

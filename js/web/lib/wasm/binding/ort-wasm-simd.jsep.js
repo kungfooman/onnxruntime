@@ -68,3 +68,4 @@ else if (typeof define === 'function' && define['amd'])
   define([], function() { return ortWasm; });
 else if (typeof exports === 'object')
   exports["ortWasm"] = ortWasm;
+export default ortWasm;

@@ -3,21 +3,19 @@
 
 //import {Backend} from './backend';
 
-/*
-interface BackendInfo {
-  backend: Backend;
-  priority: number;
-
-  initPromise?: Promise<void>;
-  initialized?: boolean;
-  aborted?: boolean;
-}
-*/
+/**
+ * @typedef {Object} BackendInfo
+ * @property {Backend} backend
+ * @property {number} priority
+ * @property {Promise<void>} [initPromise]
+ * @property {boolean} [initialized]
+ * @property {boolean} [aborted]
+ */
 
 /** @type {{[name: string]: BackendInfo}} */
-const backends = {};
+export const backends = {};
 /** @type {string[]} */
-const backendsSortedByPriority = [];
+export const backendsSortedByPriority = [];
 
 /**
  * Register a backend.
@@ -85,6 +83,7 @@ export const resolveBackend = async(backendHints) => {
 
       const isInitializing = !!backendInfo.initPromise;
       try {
+        //debugger;
         if (!isInitializing) {
           backendInfo.initPromise = backendInfo.backend.init();
         }

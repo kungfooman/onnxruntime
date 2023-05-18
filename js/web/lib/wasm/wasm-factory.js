@@ -10,11 +10,12 @@ import {OrtWasmThreadedModule} from './binding/ort-wasm-threaded.js';
 /* eslint-disable @typescript-eslint/no-require-imports */
 /** @type {EmscriptenModuleFactory<OrtWasmModule>} */
 const ortWasmFactory =
-    BUILD_DEFS.DISABLE_WEBGPU ? require('./binding/ort-wasm.js') : require('./binding/ort-wasm-simd.jsep.js');
+    BUILD_DEFS.DISABLE_WEBGPU ? (await import('./binding/ort-wasm.js'          )).default :
+                                (await import('./binding/ort-wasm-simd.jsep.js')).default;
 /** @type {EmscriptenModuleFactory<OrtWasmModule>} */
 const ortWasmFactoryThreaded = !BUILD_DEFS.DISABLE_WASM_THREAD ?
-    (BUILD_DEFS.DISABLE_WEBGPU ? require('./binding/ort-wasm-threaded.js') :
-                                 require('./binding/ort-wasm-simd-threaded.jsep.js')) :
+    (BUILD_DEFS.DISABLE_WEBGPU ? (await import('./binding/ort-wasm-threaded.js'          )).default :
+                                 (await import('./binding/ort-wasm-simd-threaded.jsep.js')).default) :
     ortWasmFactory;
 /* eslint-enable @typescript-eslint/no-require-imports */
 /** @type {OrtWasmModule|undefined} */

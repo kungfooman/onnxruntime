@@ -78,3 +78,4 @@ else if (typeof define === 'function' && define['amd'])
 else if (typeof exports === 'object')
   exports["ortWasmThreaded"] = ortWasmThreaded;
 export const OrtWasmThreadedModule = ortWasmThreaded;
+export default ortWasmThreaded;
